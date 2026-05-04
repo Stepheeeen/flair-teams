@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
@@ -145,6 +146,7 @@ async function uploadFile(
 /* ─── Component ─────────────────────────────────────────────────────────── */
 export function GroupChat({ channelType, channelId, channelInfo, parentGroupName }: GroupChatProps) {
   const { user, authHeaders } = useAuth();
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -198,6 +200,8 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
     // New message event
     channel.on('broadcast', { event: 'new_message' }, ({ payload }) => {
       setMessages((prev) => {
+        // Skip messages we sent — already in state from optimistic update + API response.
+        if (payload.sender_id === user?.id) return prev;
         if (prev.some((m) => m._id === payload._id)) return prev;
         return [...prev, payload as Message];
       });
@@ -350,7 +354,12 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showSuggestions && e.key === 'Escape') { setShowSuggestions(false); return; }
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    // Desktop: Enter sends, Shift+Enter = new line
+    // Mobile:  Enter always inserts a new line, send via button only
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   const isAnnouncement = channelInfo.type === 'announcement';
@@ -511,7 +520,9 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder={`Message #${channelInfo.name}  •  Enter to send  •  @ to mention`}
+                placeholder={isMobile
+                  ? `Message #${channelInfo.name}  •  @ to mention`
+                  : `Message #${channelInfo.name}  •  Enter to send  •  Shift+Enter for new line  •  @ to mention`}
                 rows={1}
                 disabled={isSending || isUploading}
                 className="w-full resize-none bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-40"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2, ArrowLeft } from 'lucide-react';
@@ -62,6 +63,7 @@ function Avatar({ name }: { name: string }) {
 
 export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatProps) {
   const { user, fetcher } = useAuth();
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -93,9 +95,14 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
 
     const convId = [user!.id, otherUserId].sort().join(':');
     const supabase = getSupabaseClient();
-    const ch = supabase.channel(`dm:${convId}`);
+    const ch = supabase.channel(`dm:${convId}`, {
+      config: { broadcast: { self: false } },
+    });
 
     ch.on('broadcast', { event: 'new_message' }, ({ payload }) => {
+      // Skip messages we sent ourselves — already in state from the API response.
+      // Only append messages from the other participant.
+      if (payload.sender_id === user?.id) return;
       setMessages((prev) => prev.some((m) => m._id === payload._id) ? prev : [...prev, payload]);
     });
     ch.on('broadcast', { event: 'typing' }, ({ payload }) => {
@@ -158,7 +165,12 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    // Desktop: Enter sends, Shift+Enter = new line
+    // Mobile:  Enter always inserts a new line, send via button only
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
+      e.preventDefault();
+      send();
+    }
   };
 
   const grouped = groupByDate(messages);
