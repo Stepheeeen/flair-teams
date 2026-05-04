@@ -26,8 +26,9 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const user = await User.findOneAndUpdate(
-      { id: authData.user.id },
+      { $or: [{ id: authData.user.id }, { email }] },
       { 
+        id: authData.user.id,
         email, 
         name, 
         role: 'member' 
