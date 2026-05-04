@@ -6,7 +6,7 @@ import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
-  Send, Reply, Hash, Users, Lock, Megaphone, ChevronRight,
+  Send, Reply, Hash, Users, Lock, Megaphone, ChevronRight, Layers,
   Loader2, Paperclip, File as FileIcon, X, Download,
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -47,6 +47,8 @@ interface GroupChatProps {
   channelId: string;
   channelInfo: ChannelInfo;
   parentGroupName?: string;
+  onSubGroupsClick?: () => void;
+  subGroupCount?: number;
 }
 
 interface TeamMember {
@@ -80,7 +82,16 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Render message content with highlighted @mentions */
+/** Deterministic color from username for channel messages */
+const USER_COLORS = [
+  '#60a5fa', '#34d399', '#f472b6', '#a78bfa', '#fb923c',
+  '#38bdf8', '#4ade80', '#e879f9', '#facc15', '#f87171',
+];
+function userColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return USER_COLORS[h % USER_COLORS.length];
+}
 function MessageContent({ content, currentUserId, mentions }: { content: string; currentUserId: string; mentions?: string[] }) {
   // Simple regex highlight — bold @mentions
   const parts = content.split(/(@[\w-]+)/g);
@@ -144,7 +155,7 @@ async function uploadFile(
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
-export function GroupChat({ channelType, channelId, channelInfo, parentGroupName }: GroupChatProps) {
+export function GroupChat({ channelType, channelId, channelInfo, parentGroupName, onSubGroupsClick, subGroupCount = 0 }: GroupChatProps) {
   const { user, authHeaders } = useAuth();
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -367,21 +378,31 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   const grouped = groupByDate(messages);
 
   return (
-    <div className="flex flex-col h-full bg-background relative">
+    <div className="flex flex-col h-full bg-background relative overflow-hidden">
       {/* Channel header */}
-      <div className="border-b border-border px-6 py-3 flex items-center gap-3 flex-shrink-0 bg-card/80 backdrop-blur-sm">
+      <div className="border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0 bg-card/80 backdrop-blur-sm">
         <span className="text-muted-foreground"><ChannelIcon type={channelInfo.type} is_private={channelInfo.is_private} /></span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {parentGroupName && (
-              <><span className="text-sm text-muted-foreground">{parentGroupName}</span><ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /></>
+              <><span className="text-sm text-muted-foreground truncate max-w-[80px]">{parentGroupName}</span><ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" /></>
             )}
             <h2 className="text-sm font-bold truncate">{channelInfo.name}</h2>
           </div>
           {channelInfo.description && <p className="text-xs text-muted-foreground truncate">{channelInfo.description}</p>}
         </div>
+        {/* Sub-groups button — mobile only */}
+        {onSubGroupsClick && (
+          <button
+            onClick={onSubGroupsClick}
+            className="md:hidden flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted flex-shrink-0"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>{subGroupCount > 0 ? subGroupCount : 'Sub-groups'}</span>
+          </button>
+        )}
         {isAnnouncement && (
-          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>Announcement</span>
         )}
       </div>
@@ -417,42 +438,51 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                   prev.sender_id === msg.sender_id &&
                   new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000;
                 const isOwn = msg.sender_id === user?.id;
+                const nameColor = isOwn ? '#FFC078' : userColor(msg.sender_name);
 
                 return (
-                  <div key={msg._id} className={`group flex items-start gap-3 hover:bg-muted/30 px-2 py-0.5 rounded-lg ${isConsecutive ? 'mt-0.5' : 'mt-3'}`}>
-                    <div className={`w-8 flex-shrink-0 ${isConsecutive ? 'invisible' : ''}`}>
+                  <div key={msg._id} className={`group flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${isConsecutive ? 'mt-0.5' : 'mt-3'}`}>
+                    {/* Avatar */}
+                    <div className={`w-7 h-7 flex-shrink-0 self-end ${isConsecutive ? 'invisible' : ''}`}>
                       <Avatar name={msg.sender_name} />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className={`flex flex-col max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
                       {!isConsecutive && (
-                        <div className="flex items-baseline gap-2 mb-0.5">
-                          <span className={`text-sm font-bold ${isOwn ? 'text-primary' : 'text-foreground'}`}>
+                        <div className={`flex items-baseline gap-2 mb-0.5 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                          <span className="text-xs font-bold" style={{ color: nameColor }}>
                             {isOwn ? 'You' : msg.sender_name}
                           </span>
-                          <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
                         </div>
                       )}
-
-                      {msg.type === 'file' && msg.attachment ? (
-                        <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/40 hover:bg-muted transition-colors group/file mt-1">
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#FFC078' }}>
-                            <FileIcon className="w-4 h-4 text-[#1B1C1B]" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate">{msg.attachment.name}</p>
-                            <p className="text-xs text-muted-foreground">{formatBytes(msg.attachment.size)}</p>
-                          </div>
-                          <Download className="w-4 h-4 text-muted-foreground group-hover/file:text-foreground ml-2" />
-                        </a>
-                      ) : (
-                        <MessageContent content={msg.content} currentUserId={user?.id || ''} mentions={msg.mentions} />
-                      )}
-                    </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setReplyTo(msg)} className="p-1 text-muted-foreground hover:text-foreground" title="Reply">
-                        <Reply className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Bubble */}
+                      <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words max-w-full ${
+                        isOwn
+                          ? 'rounded-br-sm text-[#1B1C1B]'
+                          : 'rounded-bl-sm bg-muted text-foreground'
+                      }`} style={isOwn ? { background: 'linear-gradient(135deg,#FFC078,#DA9646)' } : {}}>
+                        {msg.type === 'file' && msg.attachment ? (
+                          <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2">
+                            <FileIcon className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[180px]">{msg.attachment.name}</span>
+                          </a>
+                        ) : (
+                          <MessageContent content={msg.content} currentUserId={user?.id || ''} mentions={msg.mentions} />
+                        )}
+                      </div>
+                      {/* Actions row */}
+                      <div className={`flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwn ? 'flex-row-reverse' : ''}`}>
+                        <button onClick={() => setReplyTo(msg)} className="p-1 text-muted-foreground hover:text-foreground text-xs rounded" title="Reply">
+                          <Reply className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(msg.content); }}
+                          className="p-1 text-muted-foreground hover:text-foreground text-xs rounded" title="Copy"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

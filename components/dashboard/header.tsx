@@ -18,6 +18,7 @@ import {
   Hash, Folder, Building2, MessageSquare, Check, CheckCheck,
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -113,8 +114,14 @@ export function Header() {
     <>
       <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-4 lg:px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          {/* Page title */}
-          <span className="text-sm font-semibold">{getPageTitle()}</span>
+          {/* Mobile: logo + brand. Desktop: page title */}
+          <Link href="/dashboard" className="flex lg:hidden items-center gap-2">
+            <div className="relative w-7 h-7 flex-shrink-0">
+              <Image src="/logo.png" alt="Flair" fill className="object-contain" priority />
+            </div>
+            <span className="text-sm font-extrabold text-foreground">Teams</span>
+          </Link>
+          <span className="hidden lg:inline text-sm font-semibold">{getPageTitle()}</span>
         </div>
 
         {/* Right actions */}

@@ -31,7 +31,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-teal-500/30 selection:text-teal-400">
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-teal-500/30 selection:text-teal-400 overflow-x-hidden">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5">
         <div className="container mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
@@ -70,8 +70,8 @@ export default function Home() {
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[150px]"></div>
         </div>
 
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
             <div className="flex-1 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold uppercase tracking-widest mb-6">
                 <Zap className="w-3 h-3" />
@@ -84,15 +84,15 @@ export default function Home() {
               <p className="text-base sm:text-xl text-zinc-400 max-w-xl mb-8 sm:mb-10 leading-relaxed">
                 Flair Teams is the high-performance project management platform built for modern engineering and design squads. Move faster, stay synced.
               </p>
-              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-                <Link href="/signup">
-                  <Button size="lg" className="bg-teal-500 hover:bg-teal-400 text-black font-black text-lg h-16 px-10 group">
+              <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
+                <Link href="/signup" className="w-full sm:w-auto">
+                  <Button size="lg" className="bg-teal-500 hover:bg-teal-400 text-black font-black text-base sm:text-lg h-12 sm:h-14 px-6 sm:px-10 group w-full sm:w-auto">
                     Get Started Free
-                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="outline" className="border-white/10 hover:bg-white/5 h-16 px-10 font-bold">
-                  <Github className="mr-2 w-5 h-5" />
+                <Button size="lg" variant="outline" className="border-white/10 hover:bg-white/5 h-12 sm:h-14 px-6 sm:px-10 font-bold w-full sm:w-auto">
+                  <Github className="mr-2 w-4 h-4" />
                   View on GitHub
                 </Button>
               </div>

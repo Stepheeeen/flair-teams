@@ -224,23 +224,38 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                 const isOwn = msg.sender_id === user?.id;
 
                 return (
-                  <div key={msg._id}
-                    className={`flex items-start gap-3 px-2 py-0.5 rounded-lg hover:bg-muted/30 ${consec ? 'mt-0.5' : 'mt-3'}`}>
-                    <div className={`w-8 flex-shrink-0 ${consec ? 'invisible' : ''}`}>
+                  <div key={msg._id} className={`group flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${consec ? 'mt-0.5' : 'mt-3'}`}>
+                    {/* Avatar */}
+                    <div className={`w-7 h-7 flex-shrink-0 self-end ${consec ? 'invisible' : ''}`}>
                       <Avatar name={isOwn ? user.name : displayName} />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className={`flex flex-col max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
                       {!consec && (
-                        <div className="flex items-baseline gap-2 mb-0.5">
-                          <span className={`text-sm font-bold ${isOwn ? 'text-primary' : 'text-foreground'}`}>
+                        <div className={`flex items-baseline gap-2 mb-0.5 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                          <span className={`text-xs font-bold ${isOwn ? 'text-primary' : 'text-foreground'}`}>
                             {isOwn ? 'You' : displayName}
                           </span>
-                          <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
                         </div>
                       )}
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
-                        {msg.content}
-                      </p>
+                      {/* Bubble */}
+                      <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words max-w-full ${
+                        isOwn
+                          ? 'rounded-br-sm text-[#1B1C1B]'
+                          : 'rounded-bl-sm bg-muted text-foreground'
+                      }`} style={isOwn ? { background: 'linear-gradient(135deg,#FFC078,#DA9646)' } : {}}>
+                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                      </div>
+                      {/* Copy action */}
+                      <div className={`flex mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwn ? 'flex-row-reverse' : ''}`}>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(msg.content)}
+                          className="p-1 text-muted-foreground hover:text-foreground rounded"
+                          title="Copy"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
