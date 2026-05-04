@@ -40,15 +40,21 @@ export async function PATCH(req: NextRequest) {
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const name = body.name?.trim();
-    if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    const updateData: any = {};
+    if (body.name?.trim()) updateData.name = body.name.trim();
+    if (body.job_title?.trim()) updateData.job_title = body.job_title.trim();
+    if (body.avatar_url) updateData.avatar_url = body.avatar_url;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
 
     await connectToDatabase();
     const updated = await User.findOneAndUpdate(
       { id: user.id },
-      { name },
+      { $set: updateData },
       { new: true }
-    ).select('id email name role avatar_url');
+    ).select('id email name role avatar_url job_title');
 
     return NextResponse.json({ user: updated });
   } catch (error: any) {

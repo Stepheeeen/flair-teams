@@ -102,7 +102,7 @@ export default function SignUpPage() {
                     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
                   );
                   await supabase.auth.resend({ type: 'signup', email: confirmedEmail });
-                  alert('Confirmation email resent! Check your inbox.');
+                  toast.success('Confirmation email resent! Check your inbox.');
                 } finally {
                   setIsLoading(false);
                 }

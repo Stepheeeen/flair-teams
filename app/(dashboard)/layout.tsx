@@ -9,13 +9,16 @@ import Image from 'next/image';
 
 function Preloader() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="relative">
-        <div className="absolute -inset-3 rounded-2xl animate-pulse opacity-20" style={{ backgroundColor: '#FFC078' }} />
-        <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl"
-          style={{ background: 'linear-gradient(135deg, #0A0042 0%, #002E4D 100%)' }}>
-          <Image src="/logo.png" alt="Flair" width={40} height={40} className="object-contain" priority />
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+      <div className="relative animate-pulse">
+        <Image
+          src="/logo.png"
+          alt="Flair Technologies"
+          width={80}
+          height={80}
+          className="object-contain drop-shadow-xl"
+          priority
+        />
       </div>
     </div>
   );

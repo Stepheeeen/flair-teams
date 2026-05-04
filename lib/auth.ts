@@ -70,7 +70,7 @@ export async function verifyAuth(authHeader?: string | null) {
   // 2. Fall back to the HTTP-only cookie set during sign-in
   try {
     const cookieStore = await cookies();
-    const cookieToken = cookieStore.get('sb-access-token')?.value;
+    const cookieToken = cookieStore.get('sb-access-token')?.value || cookieStore.get('flair-fallback-token')?.value;
     if (cookieToken) {
       const {
         data: { user },

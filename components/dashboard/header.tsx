@@ -41,7 +41,7 @@ const NOTIF_TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 export function Header() {
-  const { user, signOut, authHeaders } = useAuth();
+  const { user, signOut, authHeaders, token } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -114,14 +114,12 @@ export function Header() {
     <>
       <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-4 lg:px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          {/* Mobile: logo + brand. Desktop: page title */}
-          <Link href="/dashboard" className="flex lg:hidden items-center gap-2">
-            <div className="relative w-7 h-7 flex-shrink-0">
-              <Image src="/logo.png" alt="Flair" fill className="object-contain" priority />
-            </div>
-            <span className="text-sm font-extrabold text-foreground">Teams</span>
-          </Link>
-          <span className="hidden lg:inline text-sm font-semibold">{getPageTitle()}</span>
+          {/* Logo (mobile only) */}
+          <div className="lg:hidden relative w-7 h-7 flex-shrink-0">
+            <Image src="/logo.png" alt="Flair Teams" fill className="object-contain" priority />
+          </div>
+          {/* Page title */}
+          <span className="text-sm font-semibold">{getPageTitle()}</span>
         </div>
 
         {/* Right actions */}
@@ -199,10 +197,14 @@ export function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2 h-8 hover:bg-accent/10">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
-                  {user?.name?.charAt(0).toUpperCase() || '?'}
-                </div>
+                {user?.avatar_url ? (
+                  <img src={(user.avatar_url.includes('/api/file') && token) ? `${user.avatar_url}&token=${token}` : user.avatar_url} alt={user?.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-border" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
+                    {user?.name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                )}
                 <span className="text-sm font-medium hidden sm:block max-w-[120px] truncate">{user?.name}</span>
                 <ChevronDown className="w-3 h-3 text-muted-foreground hidden sm:block" />
               </Button>

@@ -55,3 +55,38 @@ export async function DELETE(
     return handleApiError(error);
   }
 }
+
+// PATCH /api/groups/[groupId]
+export async function PATCH(
+  req: NextRequest,
+  props: { params: Promise<{ groupId: string }> }
+) {
+  try {
+    const { groupId } = await props.params;
+    const user = await requireAuth(req);
+    const body = await req.json();
+    await connectToDatabase();
+
+    const group = await Group.findById(groupId);
+    if (!group) throw new ApiError(404, 'Group not found');
+
+    const member = await TeamMember.findOne({ team_id: group.team_id, user_id: user.id });
+    if (!member || !['admin', 'manager'].includes(member.role)) {
+      throw new ApiError(403, 'Only admins and managers can update groups');
+    }
+
+    if (body.name !== undefined) {
+      group.name = body.name;
+    }
+    
+    if (body.members !== undefined) {
+      // Expecting an array of user_ids to be the new members list
+      group.members = body.members;
+    }
+
+    await group.save();
+    return NextResponse.json({ group });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}

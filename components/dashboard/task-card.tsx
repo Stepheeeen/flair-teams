@@ -9,9 +9,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface Task {
   _id: string;
@@ -45,6 +45,7 @@ const statusTransitions = {
 export function TaskCard({ task, onUpdated, onDeleted }: TaskCardProps) {
   const { authHeaders } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   const handleStatusChange = async (newStatus: string) => {
     setIsUpdating(true);
@@ -67,8 +68,6 @@ export function TaskCard({ task, onUpdated, onDeleted }: TaskCardProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
-
     try {
       const response = await fetch(`/api/tasks/${task._id}`, {
         method: 'DELETE',
@@ -113,7 +112,7 @@ export function TaskCard({ task, onUpdated, onDeleted }: TaskCardProps) {
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+            <DropdownMenuItem onClick={() => setShowConfirmDelete(true)} className="text-destructive">
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -134,6 +133,16 @@ export function TaskCard({ task, onUpdated, onDeleted }: TaskCardProps) {
           </span>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showConfirmDelete}
+        onOpenChange={setShowConfirmDelete}
+        title="Delete Task"
+        description="Are you sure you want to delete this task? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={handleDelete}
+      />
     </Card>
   );
 }

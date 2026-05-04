@@ -52,8 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /* ── Token helpers ──────────────────────────────────────────────────────── */
   const storeToken = useCallback((t: string | null) => {
     setToken(t);
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (t) {
+      localStorage.setItem(TOKEN_KEY, t);
+      // Sync to a non-HttpOnly cookie for fallback image auth
+      document.cookie = `flair-fallback-token=${t}; path=/; max-age=604800; samesite=lax`;
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      document.cookie = `flair-fallback-token=; path=/; max-age=0; samesite=lax`;
+    }
   }, []);
 
   const authHeaders = useCallback((): Record<string, string> => {
@@ -151,7 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchProfile(session.access_token);
         } else {
           const stored = localStorage.getItem(TOKEN_KEY);
-          if (stored) await fetchProfile(stored);
+          if (stored) {
+            storeToken(stored);
+            await fetchProfile(stored);
+          }
         }
       } finally {
         setIsLoading(false);

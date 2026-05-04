@@ -40,6 +40,7 @@ function DesktopSidebarContent({
   defaultTeamId: string | null; showCreateGroup: boolean;
   setShowCreateGroup: (v: boolean) => void;
 }) {
+  const { token } = useAuth();
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
 
@@ -145,12 +146,16 @@ function DesktopSidebarContent({
       <div className="p-2 border-t border-sidebar-border">
         <Link href="/profile">
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md hover:bg-sidebar-accent/50 transition-colors cursor-pointer">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}
-            >
-              {user?.name?.charAt(0).toUpperCase() || '?'}
-            </div>
+            {user?.avatar_url ? (
+              <img src={(user.avatar_url.includes('/api/file') && token) ? `${user.avatar_url}&token=${token}` : user.avatar_url} alt={user?.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-sidebar-border" />
+            ) : (
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}
+              >
+                {user?.name?.charAt(0).toUpperCase() || '?'}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-sidebar-foreground truncate">{user?.name}</p>
               <p className="text-[10px] text-sidebar-foreground/40 capitalize">{user?.role}</p>
@@ -173,16 +178,8 @@ function BottomAppBar({
   showCreateGroup: boolean;
   setShowCreateGroup: (v: boolean) => void;
 }) {
+  const { token } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) return;
-    const vv = window.visualViewport!;
-    const check = () => setKeyboardOpen(vv.height < window.innerHeight * 0.75);
-    vv.addEventListener('resize', check);
-    return () => vv.removeEventListener('resize', check);
-  }, []);
 
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
@@ -198,11 +195,18 @@ function BottomAppBar({
   // Check if current path is a channel (for "Channels" tab active state)
   const channelActive = pathname.startsWith('/groups');
 
+  // Hide app bar in specific chat views so the keyboard and input area aren't blocked
+  const isChatView = pathname.match(/^\/(dm|groups)\/.+/);
+
+  if (isChatView && !moreOpen) {
+    return null;
+  }
+
   return (
     <>
-      {/* Bottom app bar — hidden when keyboard is open */}
+      {/* Bottom app bar */}
       <nav
-        className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md transition-transform duration-200 ${keyboardOpen ? 'translate-y-full' : 'translate-y-0'}`}
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-stretch h-16">
@@ -236,12 +240,16 @@ function BottomAppBar({
 
           {/* Profile */}
           <Link href="/profile" className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors">
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${isActive('/profile') ? 'ring-2' : ''}`}
-              style={{ backgroundColor: '#FFC078', color: '#1B1C1B', ringColor: '#FFC078' }}
-            >
-              {user?.name?.charAt(0).toUpperCase() || '?'}
-            </div>
+            {user?.avatar_url ? (
+              <img src={(user.avatar_url.includes('/api/file') && token) ? `${user.avatar_url}&token=${token}` : user.avatar_url} alt={user?.name} className={`w-6 h-6 rounded-full object-cover flex-shrink-0 ${isActive('/profile') ? 'ring-2 ring-[#FFC078]' : ''}`} />
+            ) : (
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${isActive('/profile') ? 'ring-2' : ''}`}
+                style={{ backgroundColor: '#FFC078', color: '#1B1C1B', ringColor: '#FFC078' }}
+              >
+                {user?.name?.charAt(0).toUpperCase() || '?'}
+              </div>
+            )}
             <span className={`text-[10px] font-semibold tracking-wide ${isActive('/profile') ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>Profile</span>
           </Link>
         </div>
@@ -342,7 +350,7 @@ function BottomAppBar({
 
 // ─── Main Sidebar export ─────────────────────────────────────────────────────
 export function Sidebar() {
-  const { user, fetcher } = useAuth();
+  const { user, fetcher, token } = useAuth();
   const pathname = usePathname();
 
   const [groups, setGroups] = useState<Group[]>([]);

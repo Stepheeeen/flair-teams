@@ -40,6 +40,13 @@ function formatTime(d: string) {
   return format(date, 'dd MMM HH:mm');
 }
 
+const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'];
+const getUserColor = (userId: string) => {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+};
+
 function groupByDate(messages: DMMessage[]) {
   const groups: { date: string; messages: DMMessage[] }[] = [];
   let curr = '';
@@ -52,7 +59,14 @@ function groupByDate(messages: DMMessage[]) {
   return groups;
 }
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, src, token }: { name: string; src?: string; token?: string | null }) {
+  if (src) {
+    const imgUrl = (src.includes('/api/file') && token) ? `${src}&token=${token}` : src;
+    return (
+      <img src={imgUrl} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-border" />
+    );
+  }
+
   return (
     <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
       style={{ background: 'linear-gradient(135deg,#FFC078,#DA9646)', color: '#1B1C1B' }}>
@@ -62,7 +76,7 @@ function Avatar({ name }: { name: string }) {
 }
 
 export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatProps) {
-  const { user, fetcher } = useAuth();
+  const { user, fetcher, token } = useAuth();
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState('');
@@ -183,7 +197,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
         <Link href="/members">
           <Button variant="ghost" size="icon" className="w-8 h-8"><ArrowLeft className="w-4 h-4" /></Button>
         </Link>
-        <Avatar name={displayName} />
+        <Avatar name={displayName} src={otherUser?.avatar_url} token={token} />
         <div>
           <p className="text-sm font-bold">{displayName}</p>
           {otherUser?.job_title && (
@@ -200,7 +214,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center text-muted-foreground">
-            <Avatar name={displayName} />
+            <Avatar name={displayName} src={otherUser?.avatar_url} token={token} />
             <div>
               <p className="font-semibold text-foreground">Start a conversation with {displayName}</p>
               <p className="text-sm text-muted-foreground">
@@ -224,37 +238,24 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                 const isOwn = msg.sender_id === user?.id;
 
                 return (
-                  <div key={msg._id} className={`group flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${consec ? 'mt-0.5' : 'mt-3'}`}>
-                    {/* Avatar */}
-                    <div className={`w-7 h-7 flex-shrink-0 self-end ${consec ? 'invisible' : ''}`}>
-                      <Avatar name={isOwn ? user.name : displayName} />
+                  <div key={msg._id}
+                    className={`flex items-start gap-3 px-2 py-0.5 rounded-lg hover:bg-muted/30 ${consec ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 flex-shrink-0 ${consec ? 'invisible' : ''}`}>
+                      <Avatar name={isOwn ? user!.name : displayName} src={isOwn ? user?.avatar_url : otherUser?.avatar_url} token={token} />
                     </div>
-                    <div className={`flex flex-col max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex-1 min-w-0 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                       {!consec && (
-                        <div className={`flex items-baseline gap-2 mb-0.5 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                          <span className={`text-xs font-bold ${isOwn ? 'text-primary' : 'text-foreground'}`}>
+                        <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                          <span className="text-sm font-bold" style={{ color: isOwn ? '#FFC078' : getUserColor(msg.sender_id) }}>
                             {isOwn ? 'You' : displayName}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                          <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
                         </div>
                       )}
-                      {/* Bubble */}
-                      <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words max-w-full ${
-                        isOwn
-                          ? 'rounded-br-sm text-[#1B1C1B]'
-                          : 'rounded-bl-sm bg-muted text-foreground'
-                      }`} style={isOwn ? { background: 'linear-gradient(135deg,#FFC078,#DA9646)' } : {}}>
-                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                      </div>
-                      {/* Copy action */}
-                      <div className={`flex mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwn ? 'flex-row-reverse' : ''}`}>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(msg.content)}
-                          className="p-1 text-muted-foreground hover:text-foreground rounded"
-                          title="Copy"
-                        >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                        </button>
+                      <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary/20 text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </p>
                       </div>
                     </div>
                   </div>

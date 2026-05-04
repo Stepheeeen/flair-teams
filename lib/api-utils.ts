@@ -11,7 +11,13 @@ export class ApiError extends Error {
 }
 
 export async function requireAuth(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
+  let authHeader = req.headers.get('authorization');
+  
+  if (!authHeader) {
+    const token = req.nextUrl.searchParams.get('token');
+    if (token) authHeader = `Bearer ${token}`;
+  }
+
   const { user, error } = await verifyAuth(authHeader);
 
   if (error || !user) {

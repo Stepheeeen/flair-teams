@@ -6,11 +6,12 @@ import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
-  Send, Reply, Hash, Users, Lock, Megaphone, ChevronRight, Layers,
-  Loader2, Paperclip, File as FileIcon, X, Download,
+  Send, Reply, Hash, Users, Lock, Megaphone, ChevronRight,
+  Loader2, Paperclip, File as FileIcon, X, Download, Settings
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
+import { ManageChannelDialog } from './manage-channel-dialog';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Attachment {
@@ -47,8 +48,7 @@ interface GroupChatProps {
   channelId: string;
   channelInfo: ChannelInfo;
   parentGroupName?: string;
-  onSubGroupsClick?: () => void;
-  subGroupCount?: number;
+  headerActions?: React.ReactNode;
 }
 
 interface TeamMember {
@@ -61,7 +61,14 @@ const formatTime = (d: string) => {
   const date = new Date(d);
   if (isToday(date)) return format(date, 'HH:mm');
   if (isYesterday(date)) return `Yesterday ${format(date, 'HH:mm')}`;
-  return format(date, 'dd MMM HH:mm');
+  return format(date, 'MMM d, HH:mm');
+};
+
+const USER_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'];
+const getUserColor = (userId: string) => {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
 };
 
 const groupByDate = (messages: Message[]) => {
@@ -82,16 +89,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Deterministic color from username for channel messages */
-const USER_COLORS = [
-  '#60a5fa', '#34d399', '#f472b6', '#a78bfa', '#fb923c',
-  '#38bdf8', '#4ade80', '#e879f9', '#facc15', '#f87171',
-];
-function userColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
-  return USER_COLORS[h % USER_COLORS.length];
-}
+/** Render message content with highlighted @mentions */
 function MessageContent({ content, currentUserId, mentions }: { content: string; currentUserId: string; mentions?: string[] }) {
   // Simple regex highlight — bold @mentions
   const parts = content.split(/(@[\w-]+)/g);
@@ -113,11 +111,68 @@ function ChannelIcon({ type, is_private }: { type?: string; is_private?: boolean
   return <Hash className="w-4 h-4" />;
 }
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, src, token }: { name: string; src?: string; token?: string | null }) {
+  if (src) {
+    const imgUrl = (src.includes('/api/file') && token) ? `${src}&token=${token}` : src;
+    return (
+      <img src={imgUrl} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-border" />
+    );
+  }
+
   return (
     <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
       style={{ background: 'linear-gradient(135deg,#FFC078,#DA9646)', color: '#1B1C1B' }}>
       {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function SwipeableMessage({ children, onSwipe, isOwn }: { children: React.ReactNode, onSwipe: () => void, isOwn: boolean }) {
+  const [offset, setOffset] = useState(0);
+  const startX = useRef(0);
+  const isDragging = useRef(false);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    isDragging.current = true;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const diff = e.touches[0].clientX - startX.current;
+    // Allow swipe right to reply (up to 60px)
+    if (diff > 0 && diff < 60) {
+      setOffset(diff);
+    }
+  };
+
+  const onTouchEnd = () => {
+    isDragging.current = false;
+    if (offset > 40) {
+      onSwipe();
+    }
+    setOffset(0);
+  };
+
+  return (
+    <div
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      style={{ transform: `translateX(${offset}px)`, transition: isDragging.current ? 'none' : 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)' }}
+      className="relative flex items-center w-full"
+    >
+      <div 
+        className="absolute top-1/2 -translate-y-1/2 left-0 flex items-center justify-center transition-opacity z-[-1]"
+        style={{ opacity: offset / 40, transform: `translateX(-${20 + offset/2}px)` }}
+      >
+        <div className="bg-muted p-1.5 rounded-full shadow-sm">
+          <Reply className="w-3 h-3 text-foreground" />
+        </div>
+      </div>
+      <div className="w-full">
+        {children}
+      </div>
     </div>
   );
 }
@@ -155,8 +210,8 @@ async function uploadFile(
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
-export function GroupChat({ channelType, channelId, channelInfo, parentGroupName, onSubGroupsClick, subGroupCount = 0 }: GroupChatProps) {
-  const { user, authHeaders } = useAuth();
+export function GroupChat({ channelType, channelId, channelInfo, parentGroupName, headerActions }: GroupChatProps) {
+  const { user, authHeaders, token } = useAuth();
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -168,6 +223,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   const [mentionSuggestions, setMentionSuggestions] = useState<TeamMember[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
+  const [showManageDialog, setShowManageDialog] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -300,6 +356,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
       _id: optimisticId,
       sender_id: user!.id,
       sender_name: user!.name,
+      sender_avatar: user!.avatar_url,
       content,
       type: attachment ? 'file' : 'text',
       attachment,
@@ -378,33 +435,37 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   const grouped = groupByDate(messages);
 
   return (
-    <div className="flex flex-col h-full bg-background relative overflow-hidden">
+    <div className="flex flex-col h-full bg-background relative">
       {/* Channel header */}
-      <div className="border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0 bg-card/80 backdrop-blur-sm">
+      <div className="border-b border-border px-6 py-3 flex items-center gap-3 flex-shrink-0 bg-card/80 backdrop-blur-sm">
         <span className="text-muted-foreground"><ChannelIcon type={channelInfo.type} is_private={channelInfo.is_private} /></span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {parentGroupName && (
-              <><span className="text-sm text-muted-foreground truncate max-w-[80px]">{parentGroupName}</span><ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" /></>
+              <><span className="text-sm text-muted-foreground">{parentGroupName}</span><ChevronRight className="w-3.5 h-3.5 text-muted-foreground" /></>
             )}
             <h2 className="text-sm font-bold truncate">{channelInfo.name}</h2>
           </div>
           {channelInfo.description && <p className="text-xs text-muted-foreground truncate">{channelInfo.description}</p>}
         </div>
-        {/* Sub-groups button — mobile only */}
-        {onSubGroupsClick && (
-          <button
-            onClick={onSubGroupsClick}
-            className="md:hidden flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted flex-shrink-0"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>{subGroupCount > 0 ? subGroupCount : 'Sub-groups'}</span>
-          </button>
-        )}
-        {isAnnouncement && (
-          <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>Announcement</span>
-        )}
+        <div className="flex items-center gap-2">
+          {isAnnouncement && (
+            <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>Announcement</span>
+          )}
+          {headerActions}
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-muted ml-1"
+              onClick={() => setShowManageDialog(true)}
+              title="Manage Channel"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -438,53 +499,58 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                   prev.sender_id === msg.sender_id &&
                   new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000;
                 const isOwn = msg.sender_id === user?.id;
-                const nameColor = isOwn ? '#FFC078' : userColor(msg.sender_name);
 
                 return (
-                  <div key={msg._id} className={`group flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${isConsecutive ? 'mt-0.5' : 'mt-3'}`}>
-                    {/* Avatar */}
-                    <div className={`w-7 h-7 flex-shrink-0 self-end ${isConsecutive ? 'invisible' : ''}`}>
-                      <Avatar name={msg.sender_name} />
-                    </div>
-                    <div className={`flex flex-col max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
-                      {!isConsecutive && (
-                        <div className={`flex items-baseline gap-2 mb-0.5 px-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                          <span className="text-xs font-bold" style={{ color: nameColor }}>
-                            {isOwn ? 'You' : msg.sender_name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
-                        </div>
-                      )}
-                      {/* Bubble */}
-                      <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed break-words max-w-full ${
-                        isOwn
-                          ? 'rounded-br-sm text-[#1B1C1B]'
-                          : 'rounded-bl-sm bg-muted text-foreground'
-                      }`} style={isOwn ? { background: 'linear-gradient(135deg,#FFC078,#DA9646)' } : {}}>
+                  <SwipeableMessage key={msg._id} isOwn={isOwn} onSwipe={() => setReplyTo(msg)}>
+                    <div className={`group flex items-start gap-3 hover:bg-muted/30 px-2 py-0.5 rounded-lg ${isConsecutive ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-8 flex-shrink-0 ${isConsecutive ? 'invisible' : ''}`}>
+                        <Avatar name={msg.sender_name} src={msg.sender_avatar} token={token} />
+                      </div>
+                      <div className={`flex-1 min-w-0 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                        {!isConsecutive && (
+                          <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-sm font-bold" style={{ color: isOwn ? '#FFC078' : getUserColor(msg.sender_id) }}>
+                              {isOwn ? 'You' : msg.sender_name}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                          </div>
+                        )}
+
                         {msg.type === 'file' && msg.attachment ? (
-                          <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2">
-                            <FileIcon className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate max-w-[180px]">{msg.attachment.name}</span>
-                          </a>
+                          msg.attachment.mime_type?.startsWith('image/') ? (
+                            <div className="mt-1 relative rounded-xl overflow-hidden border border-border inline-block max-w-[280px] sm:max-w-sm">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`/api/file?path=${encodeURIComponent(msg.attachment.bucket_path || '')}&token=${token || ''}`} alt={msg.attachment.name} className="w-full h-auto object-cover max-h-60" />
+                              <a href={`/api/file?path=${encodeURIComponent(msg.attachment.bucket_path || '')}&token=${token || ''}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded text-white backdrop-blur-sm transition-colors opacity-0 group-hover/file:opacity-100 group-hover:opacity-100">
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </div>
+                          ) : (
+                            <a href={`/api/file?path=${encodeURIComponent(msg.attachment.bucket_path || '')}&token=${token || ''}`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/40 hover:bg-muted transition-colors group/file mt-1 max-w-full">
+                              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FFC078' }}>
+                                <FileIcon className="w-4 h-4 text-[#1B1C1B]" />
+                              </div>
+                              <div className="min-w-0 overflow-hidden">
+                                <p className="text-sm font-semibold truncate">{msg.attachment.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatBytes(msg.attachment.size)}</p>
+                              </div>
+                              <Download className="w-4 h-4 text-muted-foreground group-hover/file:text-foreground ml-2 flex-shrink-0" />
+                            </a>
+                          )
                         ) : (
-                          <MessageContent content={msg.content} currentUserId={user?.id || ''} mentions={msg.mentions} />
+                          <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary/20 text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
+                            <MessageContent content={msg.content} currentUserId={user?.id || ''} mentions={msg.mentions} />
+                          </div>
                         )}
                       </div>
-                      {/* Actions row */}
-                      <div className={`flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOwn ? 'flex-row-reverse' : ''}`}>
-                        <button onClick={() => setReplyTo(msg)} className="p-1 text-muted-foreground hover:text-foreground text-xs rounded" title="Reply">
-                          <Reply className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(msg.content); }}
-                          className="p-1 text-muted-foreground hover:text-foreground text-xs rounded" title="Copy"
-                        >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setReplyTo(msg)} className="p-1 text-muted-foreground hover:text-foreground" title="Reply">
+                          <Reply className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </SwipeableMessage>
                 );
               })}
             </div>
@@ -572,6 +638,23 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
           Announcement channel — only admins and managers can post.
         </div>
       )}
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      <ManageChannelDialog
+        channelType={channelType}
+        channelId={channelId}
+        channelInfo={channelInfo}
+        open={showManageDialog}
+        onOpenChange={setShowManageDialog}
+        onUpdate={() => { window.location.reload(); }}
+      />
     </div>
   );
 }

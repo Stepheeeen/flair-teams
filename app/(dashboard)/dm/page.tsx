@@ -10,10 +10,17 @@ interface Conversation {
   _id: string;
   last_message: { content: string; sender_id: string; createdAt: string };
   unread_count: number;
-  other_user: { id: string; name: string; email: string; job_title?: string } | null;
+  other_user: { id: string; name: string; email: string; job_title?: string; avatar_url?: string } | null;
 }
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, src, token }: { name: string; src?: string; token?: string | null }) {
+  if (src) {
+    const imgUrl = (src.includes('/api/file') && token) ? `${src}&token=${token}` : src;
+    return (
+      <img src={imgUrl} alt={name} className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-border" />
+    );
+  }
+
   return (
     <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
       style={{ background: 'linear-gradient(135deg,#FFC078,#DA9646)', color: '#1B1C1B' }}>
@@ -23,7 +30,7 @@ function Avatar({ name }: { name: string }) {
 }
 
 export default function DMIndexPage() {
-  const { fetcher, user } = useAuth();
+  const { fetcher, user, token } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -65,7 +72,7 @@ export default function DMIndexPage() {
             return (
               <Link key={conv._id} href={`/dm/${other?.id || ''}`}>
                 <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer">
-                  <Avatar name={name} />
+                  <Avatar name={name} src={other?.avatar_url} token={token} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <p className="text-sm font-bold truncate">{name}</p>

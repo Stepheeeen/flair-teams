@@ -8,8 +8,10 @@ import { InviteMemberDialog } from '@/components/members/invite-member-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  UserPlus, Search, MessageSquare, Briefcase, Shield, Loader2,
+  UserPlus, Search, MessageSquare, Briefcase, Shield, Loader2, Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface Member {
   user_id: string;
@@ -31,7 +33,14 @@ const ROLE_COLORS: Record<string, string> = {
   member: '#6b7280',
 };
 
-function Avatar({ name, size = 10 }: { name: string; size?: number }) {
+function Avatar({ name, size = 10, src, token }: { name: string; size?: number; src?: string; token?: string | null }) {
+  if (src) {
+    const imgUrl = (src.includes('/api/file') && token) ? `${src}&token=${token}` : src;
+    return (
+      <img src={imgUrl} alt={name} className={`w-${size} h-${size} rounded-full object-cover flex-shrink-0 border border-border`} />
+    );
+  }
+
   return (
     <div
       className={`w-${size} h-${size} rounded-full flex items-center justify-center font-bold flex-shrink-0 text-sm`}
@@ -43,7 +52,7 @@ function Avatar({ name, size = 10 }: { name: string; size?: number }) {
 }
 
 export default function MembersPage() {
-  const { user, fetcher } = useAuth();
+  const { user, fetcher, authHeaders, token } = useAuth();
   const router = useRouter();
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -51,6 +60,7 @@ export default function MembersPage() {
   const [search, setSearch] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [teamId, setTeamId] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
 
   const canInvite =
     user?.role === 'admin' ||
@@ -76,6 +86,26 @@ export default function MembersPage() {
   }, [fetcher]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleRemoveMember = async (userId: string, name: string) => {
+    if (!teamId) return;
+    
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${userId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        toast.success(`Removed ${name}`);
+        load();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to remove member');
+      }
+    } catch {
+      toast.error('An error occurred while removing the member');
+    }
+  };
 
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
@@ -155,7 +185,7 @@ export default function MembersPage() {
               >
                 {/* Top: avatar + name */}
                 <div className="flex items-start gap-3 mb-3">
-                  <Avatar name={displayName} size={10} />
+                  <Avatar name={displayName} size={10} src={member.user?.avatar_url} token={token} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-bold truncate">{displayName}</p>
@@ -191,16 +221,29 @@ export default function MembersPage() {
 
                 {/* Actions */}
                 {!isMe && (
-                  <Link href={`/dm/${member.user_id}`}>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs gap-1.5"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      Send Message
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2 mt-auto pt-2">
+                    <Link href={`/dm/${member.user_id}`} className="flex-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Message
+                      </Button>
+                    </Link>
+                    {canInvite && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-shrink-0 border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                        onClick={() => setMemberToRemove({ id: member.user_id, name: displayName })}
+                        title="Remove member"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -216,6 +259,18 @@ export default function MembersPage() {
           onInvited={load}
         />
       )}
+
+      <ConfirmDialog
+        open={!!memberToRemove}
+        onOpenChange={(open) => { if (!open) setMemberToRemove(null); }}
+        title="Remove Member"
+        description={`Are you sure you want to remove ${memberToRemove?.name} from the workspace?`}
+        confirmText="Remove"
+        variant="destructive"
+        onConfirm={() => {
+          if (memberToRemove) handleRemoveMember(memberToRemove.id, memberToRemove.name);
+        }}
+      />
     </div>
   );
 }
