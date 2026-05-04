@@ -83,5 +83,12 @@ export function handleApiError(error: any) {
     return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 });
   }
 
+  if (error.name === 'MongooseServerSelectionError') {
+    return NextResponse.json(
+      { error: 'Database connection failed. Ensure your IP is whitelisted in MongoDB Atlas.' },
+      { status: 503 }
+    );
+  }
+
   return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 }
