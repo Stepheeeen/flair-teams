@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard, Hash, Users, Megaphone, Lock,
-  Plus, MessageSquare, ChevronDown, ChevronRight, MessageCircle, X,
+  Plus, MessageSquare, ChevronDown, ChevronRight, MessageCircle,
+  MoreHorizontal, X, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
@@ -29,15 +30,15 @@ function GroupIcon({ type, is_private }: { type: string; is_private: boolean }) 
   return <Hash className="w-3.5 h-3.5 flex-shrink-0" />;
 }
 
-// Shared sidebar content used in both mobile drawer and desktop sidebar
-function SidebarContent({
+// ─── Desktop sidebar nav content ────────────────────────────────────────────
+function DesktopSidebarContent({
   user, pathname, groups, groupsOpen, setGroupsOpen,
-  defaultTeamId, showCreateGroup, setShowCreateGroup, onNavigate,
+  defaultTeamId, showCreateGroup, setShowCreateGroup,
 }: {
   user: any; pathname: string; groups: Group[];
   groupsOpen: boolean; setGroupsOpen: (v: boolean) => void;
   defaultTeamId: string | null; showCreateGroup: boolean;
-  setShowCreateGroup: (v: boolean) => void; onNavigate?: () => void;
+  setShowCreateGroup: (v: boolean) => void;
 }) {
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
@@ -45,7 +46,7 @@ function SidebarContent({
   const navItem = (href: string, label: string, icon: React.ReactNode, exact = false) => {
     const active = isActive(href, exact);
     return (
-      <Link href={href} className="block" onClick={onNavigate}>
+      <Link href={href} className="block">
         <div className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
           active
             ? 'bg-sidebar-primary/15 text-sidebar-primary'
@@ -62,7 +63,7 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       {/* Brand */}
       <div className="px-4 py-4 border-b border-sidebar-border">
-        <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onNavigate}>
+        <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="relative w-8 h-8 flex-shrink-0">
             <Image src="/logo.png" alt="Flair Technologies" fill className="object-contain" priority />
           </div>
@@ -121,7 +122,7 @@ function SidebarContent({
                 </div>
               ) : (
                 groups.map((group) => (
-                  <Link key={group._id} href={`/groups/${group._id}`} className="block" onClick={onNavigate}>
+                  <Link key={group._id} href={`/groups/${group._id}`} className="block">
                     <div className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       isActive(`/groups/${group._id}`)
                         ? 'bg-sidebar-primary/15 text-sidebar-primary'
@@ -142,7 +143,7 @@ function SidebarContent({
 
       {/* User footer */}
       <div className="p-2 border-t border-sidebar-border">
-        <Link href="/profile" onClick={onNavigate}>
+        <Link href="/profile">
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md hover:bg-sidebar-accent/50 transition-colors cursor-pointer">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -161,7 +162,177 @@ function SidebarContent({
   );
 }
 
-export function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean; onClose?: () => void }) {
+// ─── Mobile bottom app bar ───────────────────────────────────────────────────
+function BottomAppBar({
+  pathname, groups, user, defaultTeamId, showCreateGroup, setShowCreateGroup,
+}: {
+  pathname: string;
+  groups: Group[];
+  user: any;
+  defaultTeamId: string | null;
+  showCreateGroup: boolean;
+  setShowCreateGroup: (v: boolean) => void;
+}) {
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const isActive = (href: string, exact = false) =>
+    exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
+
+  // Primary tabs shown in the bottom bar
+  const tabs = [
+    { href: '/dashboard', label: 'Home', icon: LayoutDashboard, exact: true },
+    { href: '/members', label: 'Members', icon: Users },
+    { href: '/dm', label: 'Messages', icon: MessageCircle },
+    { href: '/groups', label: 'Channels', icon: MessageSquare },
+  ];
+
+  // Check if current path is a channel (for "Channels" tab active state)
+  const channelActive = pathname.startsWith('/groups');
+
+  return (
+    <>
+      {/* Bottom app bar */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex items-stretch h-16">
+          {/* Home */}
+          <Link href="/dashboard" className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+            style={{ color: isActive('/dashboard', true) ? '#FFC078' : undefined }}>
+            <LayoutDashboard className={`w-5 h-5 ${isActive('/dashboard', true) ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+            <span className={`text-[10px] font-semibold tracking-wide ${isActive('/dashboard', true) ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>Home</span>
+          </Link>
+
+          {/* Members */}
+          <Link href="/members" className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors">
+            <Users className={`w-5 h-5 ${isActive('/members') ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+            <span className={`text-[10px] font-semibold tracking-wide ${isActive('/members') ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>Members</span>
+          </Link>
+
+          {/* Direct Messages */}
+          <Link href="/dm" className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors">
+            <MessageCircle className={`w-5 h-5 ${isActive('/dm') ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+            <span className={`text-[10px] font-semibold tracking-wide ${isActive('/dm') ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>DMs</span>
+          </Link>
+
+          {/* Channels / More */}
+          <button
+            className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+            onClick={() => setMoreOpen(true)}
+          >
+            <MessageSquare className={`w-5 h-5 ${channelActive ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+            <span className={`text-[10px] font-semibold tracking-wide ${channelActive ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>Channels</span>
+          </button>
+
+          {/* Profile */}
+          <Link href="/profile" className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${isActive('/profile') ? 'ring-2' : ''}`}
+              style={{ backgroundColor: '#FFC078', color: '#1B1C1B', ringColor: '#FFC078' }}
+            >
+              {user?.name?.charAt(0).toUpperCase() || '?'}
+            </div>
+            <span className={`text-[10px] font-semibold tracking-wide ${isActive('/profile') ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>Profile</span>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Channels sheet — slides up from bottom */}
+      {moreOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMoreOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="relative z-50 bg-card rounded-t-2xl border-t border-border shadow-2xl max-h-[70vh] flex flex-col">
+            {/* Sheet handle */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-border flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" style={{ color: '#FFC078' }} />
+                <p className="font-bold text-sm">Channels</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {(user?.role === 'admin' || user?.role === 'manager') && defaultTeamId && (
+                  <button
+                    onClick={() => { setShowCreateGroup(true); setMoreOpen(false); }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-primary"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    New
+                  </button>
+                )}
+                <button
+                  onClick={() => setMoreOpen(false)}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Channel list */}
+            <div className="overflow-y-auto flex-1 p-3 space-y-1">
+              {groups.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">No channels yet</p>
+                  {(user?.role === 'admin' || user?.role === 'manager') && defaultTeamId && (
+                    <button
+                      onClick={() => { setShowCreateGroup(true); setMoreOpen(false); }}
+                      className="mt-2 text-sm font-semibold text-primary hover:underline"
+                    >
+                      Create your first channel
+                    </button>
+                  )}
+                </div>
+              ) : (
+                groups.map((group) => (
+                  <Link
+                    key={group._id}
+                    href={`/groups/${group._id}`}
+                    onClick={() => setMoreOpen(false)}
+                    className="block"
+                  >
+                    <div className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
+                      isActive(`/groups/${group._id}`)
+                        ? 'bg-primary/10 text-primary'
+                        : 'hover:bg-muted'
+                    }`}>
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: `linear-gradient(135deg, ${group.color || '#FFC078'}, ${group.color ? group.color + 'CC' : '#DA9646'})`,
+                          color: '#1B1C1B',
+                        }}
+                      >
+                        <GroupIcon type={group.type} is_private={group.is_private} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">#{group.name}</p>
+                        {group.description && (
+                          <p className="text-xs text-muted-foreground truncate">{group.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+
+            {/* Safe area spacer */}
+            <div style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Main Sidebar export ─────────────────────────────────────────────────────
+export function Sidebar() {
   const { user, fetcher } = useAuth();
   const pathname = usePathname();
 
@@ -200,33 +371,15 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen?: boolean; onClose
 
   return (
     <>
-      {/* ── Desktop sidebar (always visible ≥ lg) ── */}
+      {/* ── Desktop sidebar (visible ≥ lg) ── */}
       <aside className="hidden lg:flex w-60 bg-sidebar border-r border-sidebar-border flex-col h-screen flex-shrink-0">
-        <SidebarContent {...sharedProps} />
+        <DesktopSidebarContent {...sharedProps} />
       </aside>
 
-      {/* ── Mobile drawer overlay ── */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 flex">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          {/* Drawer panel */}
-          <aside className="relative z-50 w-72 max-w-[85vw] bg-sidebar border-r border-sidebar-border flex flex-col h-full shadow-2xl">
-            {/* Close button */}
-            <button
-              onClick={onClose}
-              className="absolute top-3 right-3 p-1.5 rounded-md text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors z-10"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <SidebarContent {...sharedProps} onNavigate={onClose} />
-          </aside>
-        </div>
-      )}
+      {/* ── Mobile bottom app bar (visible < lg) ── */}
+      <BottomAppBar {...sharedProps} />
 
+      {/* Create group dialog (shared) */}
       {defaultTeamId && (
         <CreateGroupDialog
           teamId={defaultTeamId}
