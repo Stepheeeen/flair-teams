@@ -1,7 +1,8 @@
 import { requireAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { connectToDatabase } from '@/lib/db';
-import { Task, Project, TeamMember, Activity } from '@/lib/models';
+import { Task, Project, TeamMember, Activity, User } from '@/lib/models';
 import { createTaskSchema } from '@/lib/schemas';
+import { sendTaskAssignedEmail } from '@/lib/email';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET tasks
@@ -89,6 +90,21 @@ export async function POST(req: NextRequest) {
       resource_id: task._id,
       details: { title },
     });
+
+    // Notify assigned user
+    if (assigned_to) {
+      User.findOne({ id: assigned_to }).then(assignedUser => {
+        if (assignedUser?.email) {
+          sendTaskAssignedEmail({
+            to: assignedUser.email,
+            taskTitle: title,
+            projectName: project.name,
+            assignedBy: user.name || user.email,
+            taskUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${project_id}`,
+          }).catch(err => console.error('Failed to send task assignment email:', err));
+        }
+      });
+    }
 
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

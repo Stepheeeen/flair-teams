@@ -66,6 +66,53 @@ export async function sendInviteEmail({
   });
 }
 
+/** Send a welcome email after successful signup */
+export async function sendWelcomeEmail({
+  to, name,
+}: {
+  to: string;
+  name: string;
+}) {
+  if (!process.env.RESEND_API_KEY) return;
+
+  await getResend()?.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Welcome to Flair Teams, ${name}!`,
+    html: emailTemplate({
+      title: `Welcome to the team, <strong>${escapeHtml(name)}</strong>!`,
+      body: `We're excited to have you here. Flair Teams is your new home for project management, task tracking, and seamless team collaboration.<br/><br/>Start by exploring your dashboard and joining your first team.`,
+      ctaText: 'Go to Dashboard',
+      ctaUrl: `${APP_URL}/dashboard`,
+    }),
+  });
+}
+
+/** Send a notification when a user is assigned a task */
+export async function sendTaskAssignedEmail({
+  to, taskTitle, projectName, assignedBy, taskUrl,
+}: {
+  to: string;
+  taskTitle: string;
+  projectName: string;
+  assignedBy: string;
+  taskUrl: string;
+}) {
+  if (!process.env.RESEND_API_KEY) return;
+
+  await getResend()?.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `New Task Assigned: ${taskTitle}`,
+    html: emailTemplate({
+      title: `You have a new task in <strong>${escapeHtml(projectName)}</strong>`,
+      body: `<strong>${escapeHtml(assignedBy)}</strong> has assigned you a new task: <br/><strong>${escapeHtml(taskTitle)}</strong>`,
+      ctaText: 'View Task',
+      ctaUrl: taskUrl,
+    }),
+  });
+}
+
 // ─── Shared email template ──────────────────────────────────────────────────
 function emailTemplate({
   title, body, ctaText, ctaUrl,

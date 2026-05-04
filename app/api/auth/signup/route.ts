@@ -2,6 +2,7 @@ import { createSupabaseClient } from '@/lib/auth';
 import { signUpSchema } from '@/lib/schemas';
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
+import { sendWelcomeEmail } from '@/lib/email';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -33,6 +34,11 @@ export async function POST(req: NextRequest) {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail({ to: email, name }).catch(err => {
+      console.error('Failed to send welcome email:', err);
+    });
 
     return NextResponse.json(
       {
