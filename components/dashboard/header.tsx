@@ -14,7 +14,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Sun, Moon, LogOut, User, ChevronDown, Bell, Search,
+  Sun, Moon, LogOut, User, ChevronDown, Bell, Search, Menu,
   Hash, Folder, Building2, MessageSquare, Check, CheckCheck,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -39,7 +39,7 @@ const NOTIF_TYPE_ICONS: Record<string, React.ReactNode> = {
   channel_message: <Hash className="w-3.5 h-3.5" />,
 };
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, signOut, authHeaders } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -111,9 +111,19 @@ export function Header() {
 
   return (
     <>
-      <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
-        {/* Page title */}
-        <span className="text-sm font-semibold">{getPageTitle()}</span>
+      <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-4 lg:px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          {/* Hamburger — mobile only */}
+          <button
+            className="lg:hidden p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={onMenuClick}
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          {/* Page title */}
+          <span className="text-sm font-semibold">{getPageTitle()}</span>
+        </div>
 
         {/* Right actions */}
         <div className="flex items-center gap-1">

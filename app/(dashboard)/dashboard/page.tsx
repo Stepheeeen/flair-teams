@@ -88,19 +88,19 @@ export default function DashboardPage() {
   const canCreate = user?.role === 'admin' || user?.role === 'manager';
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
       {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-foreground">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-black text-foreground">
           {greeting}, {user?.name?.split(' ')[0]} 👋
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-muted-foreground mt-1 text-sm">
           Here's what's happening across your channels today.
         </p>
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {[
           { label: 'Total Channels', value: groups.length, color: '#FFC078' },
           {

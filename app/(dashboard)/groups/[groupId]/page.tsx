@@ -89,8 +89,8 @@ export default function GroupPage() {
         />
       </div>
 
-      {/* Sub-groups sidebar */}
-      <div className="w-56 border-l border-border bg-card flex-shrink-0 flex flex-col">
+      {/* Sub-groups sidebar — hidden on mobile */}
+      <div className="hidden md:flex w-56 border-l border-border bg-card flex-shrink-0 flex-col">
         <div className="p-3 border-b border-border">
           <div className="flex items-center justify-between">
             <button

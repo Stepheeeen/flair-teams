@@ -34,7 +34,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-teal-500/30 selection:text-teal-400">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-teal-500 rounded-lg flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-300">
               <Layout className="w-6 h-6 text-black" />
@@ -64,7 +64,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-40 pb-20 overflow-hidden">
+      <section className="relative pt-28 sm:pt-40 pb-16 sm:pb-20 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-6xl pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-teal-500/10 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[150px]"></div>
@@ -77,11 +77,11 @@ export default function Home() {
                 <Zap className="w-3 h-3" />
                 Now in Private Beta
               </div>
-              <h1 className="text-6xl lg:text-8xl font-black leading-[0.9] tracking-tighter mb-8">
+              <h1 className="text-4xl sm:text-6xl lg:text-8xl font-black leading-[0.9] tracking-tighter mb-6 sm:mb-8">
                 COLLABORATE <br />
                 <span className="text-teal-500">WITHOUT</span> LIMITS.
               </h1>
-              <p className="text-xl text-zinc-400 max-w-xl mb-10 leading-relaxed">
+              <p className="text-base sm:text-xl text-zinc-400 max-w-xl mb-8 sm:mb-10 leading-relaxed">
                 Flair Teams is the high-performance project management platform built for modern engineering and design squads. Move faster, stay synced.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
@@ -115,7 +115,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex-1 relative">
+            <div className="flex-1 relative mt-8 lg:mt-0">
               <div className="relative z-10 rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-teal-500/10 group">
                 <Image 
                   src="/flair_teams_hero_1777795135926.png" 
@@ -159,7 +159,7 @@ export default function Home() {
       <section id="features" className="py-32 border-t border-white/5">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-6xl font-black tracking-tighter mb-4">ENGINEERED FOR TEAMS.</h2>
+            <h2 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter mb-4">ENGINEERED FOR TEAMS.</h2>
             <p className="text-zinc-400 max-w-2xl mx-auto">
               Everything you need to ship products faster without the bloat of traditional project management tools.
             </p>

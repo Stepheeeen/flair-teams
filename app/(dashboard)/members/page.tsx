@@ -89,11 +89,11 @@ export default function MembersPage() {
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:justify-between mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-black text-foreground">Members</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-foreground">Members</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {isLoading ? '…' : `${members.length} people in your workspace`}
           </p>
@@ -101,7 +101,7 @@ export default function MembersPage() {
         {canInvite && teamId && (
           <Button
             onClick={() => setShowInvite(true)}
-            className="gap-2 font-semibold"
+            className="gap-2 font-semibold self-start sm:self-auto flex-shrink-0"
             style={{ background: 'linear-gradient(135deg,#FFC078,#DA9646)', color: '#1B1C1B' }}
           >
             <UserPlus className="w-4 h-4" />
@@ -195,7 +195,7 @@ export default function MembersPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="w-full text-xs gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-full text-xs gap-1.5"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       Send Message

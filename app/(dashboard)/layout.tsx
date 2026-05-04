@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import Image from 'next/image';
@@ -67,6 +67,7 @@ function Preloader() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) router.push('/signin');
@@ -76,10 +77,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return <Preloader />; // brief flash while redirect fires
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar
+        mobileOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto bg-background">
           {children}
         </main>

@@ -42,8 +42,8 @@ export default function DMIndexPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-black mb-6">Direct Messages</h1>
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+      <h1 className="text-2xl sm:text-3xl font-black mb-5 sm:mb-6">Direct Messages</h1>
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
