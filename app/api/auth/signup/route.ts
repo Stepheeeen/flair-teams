@@ -1,9 +1,17 @@
 import { createSupabaseClient } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
 import { signUpSchema } from '@/lib/schemas';
 import { connectToDatabase } from '@/lib/db';
 import { User } from '@/lib/models';
-import { sendWelcomeEmail } from '@/lib/email';
 import { NextRequest, NextResponse } from 'next/server';
+
+function createAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,43 +19,44 @@ export async function POST(req: NextRequest) {
     const { email, password, name } = signUpSchema.parse(body);
 
     const supabase = createSupabaseClient();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://teams.flairtechlabs.com';
 
-    // Sign up user with Supabase Auth
+    // Sign up — Supabase will send a confirmation email via your configured Resend SMTP.
+    // The link in the email redirects to /auth/callback which finalises the session.
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${appUrl}/auth/callback`,
+        data: { name },
+      },
     });
 
-    if (authError || !authData.user) {
-      return NextResponse.json({ error: authError?.message || 'Sign up failed' }, { status: 400 });
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // Connect to MongoDB and create/update user record
-    await connectToDatabase();
+    // Supabase returns a user even before confirmation, but session is null until confirmed.
+    const supabaseUser = authData.user;
+    if (!supabaseUser) {
+      return NextResponse.json({ error: 'Sign up failed' }, { status: 400 });
+    }
 
-    const user = await User.findOneAndUpdate(
-      { $or: [{ id: authData.user.id }, { email }] },
-      { 
-        id: authData.user.id,
-        email, 
-        name, 
-        role: 'member' 
-      },
+    // Pre-sync the user record in MongoDB so it's ready once they confirm
+    await connectToDatabase();
+    await User.findOneAndUpdate(
+      { $or: [{ id: supabaseUser.id }, { email }] },
+      { id: supabaseUser.id, email, name, role: 'member' },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Send welcome email (non-blocking)
-    sendWelcomeEmail({ to: email, name }).catch(err => {
-      console.error('Failed to send welcome email:', err);
-    });
+    // If session is null, email confirmation is required
+    const needsConfirmation = !authData.session;
 
     return NextResponse.json(
       {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        },
+        needs_confirmation: needsConfirmation,
+        user: { id: supabaseUser.id, email, name },
       },
       { status: 201 }
     );

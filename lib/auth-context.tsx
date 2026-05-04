@@ -26,7 +26,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<{ needs_confirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Returns headers including Authorization + Content-Type */
@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /* ── Sign Up ─────────────────────────────────────────────────────────────── */
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
+  const signUp = useCallback(async (email: string, password: string, name: string): Promise<{ needs_confirmation: boolean }> => {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -171,24 +171,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Sign up failed'); }
 
-    const siRes = await fetch('/api/auth/signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!siRes.ok) { const e = await siRes.json(); throw new Error(e.error || 'Auto sign-in failed'); }
+    const data = await res.json();
 
-    const data = await siRes.json();
-    setUser(data.user);
-    if (data.session?.access_token) {
-      storeToken(data.session.access_token);
-      if (data.session.refresh_token) {
-        await getSupabaseClient().auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
+    // If email confirmation is not required (e.g. already confirmed), auto sign-in
+    if (!data.needs_confirmation) {
+      const siRes = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (siRes.ok) {
+        const siData = await siRes.json();
+        setUser(siData.user);
+        if (siData.session?.access_token) {
+          storeToken(siData.session.access_token);
+          if (siData.session.refresh_token) {
+            await getSupabaseClient().auth.setSession({
+              access_token: siData.session.access_token,
+              refresh_token: siData.session.refresh_token,
+            });
+          }
+        }
       }
     }
+
+    return { needs_confirmation: !!data.needs_confirmation };
   }, [storeToken]);
 
   /* ── Sign In ─────────────────────────────────────────────────────────────── */

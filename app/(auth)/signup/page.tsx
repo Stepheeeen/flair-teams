@@ -36,6 +36,7 @@ export default function SignUpPage() {
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmedEmail, setConfirmedEmail] = useState(''); // non-empty = show check-email screen
 
   const clearErr = (field: string) => setErrs((p) => { const n = { ...p }; delete n[field]; return n; });
 
@@ -48,8 +49,12 @@ export default function SignUpPage() {
 
     setIsLoading(true);
     try {
-      await signUp(email.trim(), password, name.trim());
-      router.push('/dashboard');
+      const { needs_confirmation } = await signUp(email.trim(), password, name.trim());
+      if (needs_confirmation) {
+        setConfirmedEmail(email.trim()); // show check-email screen
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       const msg: string = err.message || '';
       if (msg.includes('already registered') || msg.includes('already exists')) {
@@ -65,6 +70,56 @@ export default function SignUpPage() {
   const strength = password.length === 0 ? 0 : password.length < 8 ? 1 : !/\d/.test(password) ? 2 : password.length < 12 ? 3 : 4;
   const strengthColors = ['', '#ef4444', '#f97316', '#FFC078', '#10b981'];
   const strengthLabels = ['', 'Too short', 'Add a number', 'Good', 'Strong'];
+
+  // ── Check-your-email screen ──────────────────────────────────────────────
+  if (confirmedEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm text-center">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 text-3xl shadow-lg"
+            style={{ background: 'linear-gradient(135deg,#FFC078,#DA9646)', color: '#1B1C1B' }}
+          >
+            ✉️
+          </div>
+          <h1 className="text-2xl font-black text-foreground mb-2">Check your email</h1>
+          <p className="text-sm text-muted-foreground mb-1">
+            We sent a confirmation link to:
+          </p>
+          <p className="text-sm font-bold text-foreground mb-6 break-all">{confirmedEmail}</p>
+          <p className="text-sm text-muted-foreground mb-8">
+            Click the link in the email to confirm your account and get access to your workspace. Check your spam folder if you don't see it.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={async () => {
+                setIsLoading(true);
+                try {
+                  // Re-trigger Supabase to resend the confirmation email
+                  const { createClient } = await import('@supabase/supabase-js');
+                  const supabase = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                  );
+                  await supabase.auth.resend({ type: 'signup', email: confirmedEmail });
+                  alert('Confirmation email resent! Check your inbox.');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              className="w-full py-2.5 rounded-lg text-sm font-bold border border-border text-foreground hover:bg-muted transition-colors"
+            >
+              {isLoading ? 'Resending…' : 'Resend confirmation email'}
+            </button>
+            <Link href="/signin" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Already confirmed? Sign in →
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
