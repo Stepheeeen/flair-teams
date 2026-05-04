@@ -21,15 +21,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: authError?.message || 'Sign up failed' }, { status: 400 });
     }
 
-    // Connect to MongoDB and create user record
+    // Connect to MongoDB and create/update user record
     await connectToDatabase();
 
-    const user = await User.create({
-      id: authData.user.id,
-      email,
-      name,
-      role: 'member',
-    });
+    const user = await User.findOneAndUpdate(
+      { id: authData.user.id },
+      { 
+        email, 
+        name, 
+        role: 'member' 
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     return NextResponse.json(
       {

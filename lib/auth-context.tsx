@@ -97,7 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (res.status >= 500) {
-      toast.error('Something went wrong on our end. Please try again in a moment.');
+      let msg = 'Something went wrong on our end. Please try again in a moment.';
+      try {
+        const d = await res.clone().json();
+        if (d.error) msg = d.error;
+      } catch {}
+      toast.error(msg);
     }
 
     return res;
