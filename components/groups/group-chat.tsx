@@ -296,9 +296,19 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   }, [channelId, channelType]);
 
   /* ── Auto-scroll ───────────────────────────────────────────────────────── */
-  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Scroll to latest message when keyboard opens on iOS
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isKeyboardOpen]);
+
+  const keyboardHeight = useKeyboardHeight();
+  const isKeyboardOpen = keyboardHeight > 80;
 
   /* ── Typing broadcast ──────────────────────────────────────────────────── */
   const broadcastTyping = useCallback((isTyping: boolean) => {
@@ -592,8 +602,9 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div
           className={[
             'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-            // Mobile: fixed, sitting above the bottom nav
-            'fixed left-0 right-0 bottom-16',
+            // Mobile: fixed
+            'fixed left-0 right-0 transition-all duration-200',
+            isKeyboardOpen ? 'bottom-0' : 'bottom-16',
             // Desktop: back to normal flow
             'lg:static lg:bottom-auto lg:flex-shrink-0',
           ].join(' ')}
@@ -660,7 +671,8 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div
           className={[
             'border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20',
-            'fixed left-0 right-0 bottom-16',
+            'fixed left-0 right-0 transition-all duration-200',
+            isKeyboardOpen ? 'bottom-0' : 'bottom-16',
             'lg:static lg:bottom-auto lg:flex-shrink-0',
           ].join(' ')}
         >

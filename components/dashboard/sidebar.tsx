@@ -199,6 +199,9 @@ function BottomAppBar({
   // Check if current path is a channel (for "Channels" tab active state)
   const channelActive = pathname.startsWith('/groups');
 
+  // Hide the app bar when the keyboard is open (e.g. while typing in chat)
+  if (isKeyboardOpen && !moreOpen) return null;
+
   return (
     <>
       {/* Bottom app bar */}
