@@ -33,6 +33,7 @@ export default function DMIndexPage() {
   const { fetcher, user, token } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMarking, setIsMarking] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -46,11 +47,33 @@ export default function DMIndexPage() {
     }
   }, [fetcher]);
 
+  const markAllRead = async () => {
+    setIsMarking(true);
+    try {
+      await fetcher('/api/dm/read-all', { method: 'POST' });
+      setConversations(prev => prev.map(c => ({ ...c, unread_count: 0 })));
+    } finally {
+      setIsMarking(false);
+      window.location.reload(); // Refresh to update sidebar too
+    }
+  };
+
   useEffect(() => { load(); }, [load]);
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl sm:text-3xl font-black mb-5 sm:mb-6">Direct Messages</h1>
+      <div className="flex items-center justify-between mb-5 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-black">Direct Messages</h1>
+        {conversations.some(c => c.unread_count > 0) && (
+          <button 
+            onClick={markAllRead}
+            disabled={isMarking}
+            className="text-xs font-bold text-primary hover:underline"
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>

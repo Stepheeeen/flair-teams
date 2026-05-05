@@ -53,11 +53,14 @@ export async function GET(req: NextRequest) {
         const otherUser = await User.findOne({ id: otherId })
           .select('id name email avatar_url job_title')
           .lean();
+        if (!otherUser) return null;
         return { ...conv, other_user: otherUser };
       })
     );
 
-    return NextResponse.json({ conversations: enriched });
+    const filtered = enriched.filter(Boolean);
+
+    return NextResponse.json({ conversations: filtered });
   } catch (error) {
     return handleApiError(error);
   }

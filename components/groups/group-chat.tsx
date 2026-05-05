@@ -594,8 +594,11 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div
           className={[
             'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-            // Mobile: fixed, sitting above the bottom nav
-            'fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+            // Mobile: fixed, sitting above the bottom nav (or at bottom if keyboard is open/nav hidden)
+            'fixed left-0 right-0 transition-all duration-200',
+            isKeyboardOpen 
+              ? 'bottom-0' 
+              : 'bottom-[calc(4rem+env(safe-area-inset-bottom))]',
             // Desktop: back to normal flow
             'lg:static lg:bottom-auto lg:flex-shrink-0',
           ].join(' ')}
@@ -662,7 +665,10 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div
           className={[
             'border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20',
-            'fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+            'fixed left-0 right-0 transition-all duration-200',
+            isKeyboardOpen 
+              ? 'bottom-0' 
+              : 'bottom-[calc(4rem+env(safe-area-inset-bottom))]',
             'lg:static lg:bottom-auto lg:flex-shrink-0',
           ].join(' ')}
         >

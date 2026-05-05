@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
+import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 
 interface Group {
   _id: string;
@@ -189,12 +190,17 @@ function BottomAppBar({
 }) {
   const { token } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
+  const keyboardHeight = useKeyboardHeight();
+  const isKeyboardOpen = keyboardHeight > 80;
 
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
 
   // Check if current path is a channel (for "Channels" tab active state)
   const channelActive = pathname.startsWith('/groups');
+
+  // Hide the app bar when the keyboard is open (e.g. while typing in chat)
+  if (isKeyboardOpen && !moreOpen) return null;
 
   return (
     <>

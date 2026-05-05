@@ -6,7 +6,7 @@ import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
-import { Send, Loader2, ArrowLeft } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, Reply } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -19,6 +19,7 @@ interface DMMessage {
   content: string;
   createdAt: string;
   read: boolean;
+  reply_to?: DMMessage | null;
 }
 
 interface OtherUser {
@@ -86,6 +87,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [typingUsers, setTypingUsers] = useState(false);
+  const [replyTo, setReplyTo] = useState<DMMessage | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -165,14 +167,16 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       content,
       createdAt: new Date().toISOString(),
       read: false,
+      reply_to: replyTo,
     };
     setMessages((p) => [...p, opt]);
     setInput('');
+    setReplyTo(null);
 
     try {
       const res = await fetcher(apiUrl, {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, reply_to: replyTo?._id }),
       });
       if (!res.ok) {
         setMessages((p) => p.filter((m) => m._id !== optId));
@@ -255,21 +259,44 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                     <div className={`w-8 flex-shrink-0 ${consec ? 'invisible' : ''}`}>
                       <Avatar name={isOwn ? user!.name : displayName} src={isOwn ? user?.avatar_url : otherUser?.avatar_url} token={token} />
                     </div>
-                    <div className={`flex-1 min-w-0 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-                      {!consec && (
-                        <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                          <span className="text-sm font-bold" style={{ color: isOwn ? '#FFC078' : getUserColor(msg.sender_id) }}>
-                            {isOwn ? 'You' : displayName}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                      <div className={`flex-1 min-w-0 flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                        {!consec && (
+                          <div className={`flex items-baseline gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                            <span className="text-sm font-bold" style={{ color: isOwn ? '#FFC078' : getUserColor(msg.sender_id) }}>
+                              {isOwn ? 'You' : displayName}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                          </div>
+                        )}
+
+                        {/* Reply reference */}
+                        {msg.reply_to && (
+                          <div className={`mb-1 px-3 py-1 rounded-lg border-l-2 text-xs bg-muted/40 max-w-[90%] truncate opacity-80 ${isOwn ? 'border-primary/50' : 'border-border'}`}>
+                            <p className="font-bold text-[10px] opacity-70">{msg.reply_to.sender_name}</p>
+                            <p className="truncate">{msg.reply_to.content}</p>
+                          </div>
+                        )}
+
+                        <div 
+                          className={`py-1.5 px-3 rounded-2xl max-w-[85%] relative group transition-all ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {msg.content}
+                          </p>
+                          
+                          {/* Reply button (appears on hover) */}
+                          <button
+                            onClick={() => {
+                              setReplyTo(msg);
+                              inputRef.current?.focus();
+                            }}
+                            className={`absolute top-0 ${isOwn ? '-left-8' : '-right-8'} p-1.5 rounded-full bg-card border border-border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity`}
+                            title="Reply"
+                          >
+                            <Reply className="w-3 h-3 text-muted-foreground" />
+                          </button>
                         </div>
-                      )}
-                      <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                          {msg.content}
-                        </p>
                       </div>
-                    </div>
                   </div>
                 );
               })}
@@ -297,10 +324,24 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       <div
         className={[
           'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-          'fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+          'fixed left-0 right-0 transition-all duration-200',
+          isKeyboardOpen 
+            ? 'bottom-0' 
+            : 'bottom-[calc(4rem+env(safe-area-inset-bottom))]',
           'lg:static lg:bottom-auto lg:flex-shrink-0',
         ].join(' ')}
       >
+        {/* Reply preview */}
+        {replyTo && (
+          <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-muted/50 border-l-2" style={{ borderColor: '#FFC078' }}>
+            <Reply className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <p className="text-xs text-muted-foreground flex-1 truncate">
+              Replying to <strong>{replyTo.sender_name}</strong>: {replyTo.content}
+            </p>
+            <button onClick={() => setReplyTo(null)} className="text-muted-foreground font-bold text-xs">✕</button>
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}

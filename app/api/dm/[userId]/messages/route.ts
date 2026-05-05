@@ -44,6 +44,7 @@ export async function GET(
     const messages = await DirectMessage.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
+      .populate('reply_to')
       .lean();
 
     // Mark received messages as read
@@ -87,7 +88,11 @@ export async function POST(
       sender_avatar: senderDoc?.avatar_url,
       content,
       type: 'text',
+      reply_to: body.reply_to || null,
     });
+
+    // Populate reply_to for the response
+    await message.populate('reply_to');
 
     // Realtime broadcast to both participants
     try {
