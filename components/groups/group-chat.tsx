@@ -214,8 +214,6 @@ async function uploadFile(
 export function GroupChat({ channelType, channelId, channelInfo, parentGroupName, headerActions }: GroupChatProps) {
   const { user, authHeaders, token } = useAuth();
   const isMobile = useIsMobile();
-  const keyboardHeight = useKeyboardHeight();
-  const isKeyboardOpen = keyboardHeight > 80;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -475,7 +473,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
       </div>
 
       {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 lg:pb-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -594,11 +592,8 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div
           className={[
             'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-            // Mobile: fixed, sitting above the bottom nav (or at bottom if keyboard is open/nav hidden)
-            'fixed left-0 right-0 transition-all duration-200',
-            isKeyboardOpen 
-              ? 'bottom-0' 
-              : 'bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+            // Mobile: fixed, sitting above the bottom nav
+            'fixed left-0 right-0 bottom-16',
             // Desktop: back to normal flow
             'lg:static lg:bottom-auto lg:flex-shrink-0',
           ].join(' ')}
@@ -665,10 +660,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div
           className={[
             'border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20',
-            'fixed left-0 right-0 transition-all duration-200',
-            isKeyboardOpen 
-              ? 'bottom-0' 
-              : 'bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+            'fixed left-0 right-0 bottom-16',
             'lg:static lg:bottom-auto lg:flex-shrink-0',
           ].join(' ')}
         >

@@ -199,15 +199,11 @@ function BottomAppBar({
   // Check if current path is a channel (for "Channels" tab active state)
   const channelActive = pathname.startsWith('/groups');
 
-  // Hide the app bar when the keyboard is open (e.g. while typing in chat)
-  if (isKeyboardOpen && !moreOpen) return null;
-
   return (
     <>
       {/* Bottom app bar */}
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-stretch h-16">
           {/* Home */}

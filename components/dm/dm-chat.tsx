@@ -80,8 +80,6 @@ function Avatar({ name, src, token }: { name: string; src?: string; token?: stri
 export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatProps) {
   const { user, fetcher, token } = useAuth();
   const isMobile = useIsMobile();
-  const keyboardHeight = useKeyboardHeight();
-  const isKeyboardOpen = keyboardHeight > 80;
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -138,15 +136,6 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
   }, [otherUserId]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  // Scroll to latest message when keyboard opens on iOS
-  useEffect(() => {
-    if (isKeyboardOpen) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isKeyboardOpen]);
-
 
   const broadcastTyping = () => {
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: user?.id } });
@@ -223,7 +212,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       </div>
 
       {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 lg:pb-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -324,10 +313,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       <div
         className={[
           'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-          'fixed left-0 right-0 transition-all duration-200',
-          isKeyboardOpen 
-            ? 'bottom-0' 
-            : 'bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+          'fixed left-0 right-0 bottom-16',
           'lg:static lg:bottom-auto lg:flex-shrink-0',
         ].join(' ')}
       >
