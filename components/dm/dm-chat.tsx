@@ -142,7 +142,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
   // Scroll to latest message when keyboard opens on iOS
   useEffect(() => {
     if (isKeyboardOpen) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isKeyboardOpen]);
@@ -222,7 +222,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       </div>
 
       {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 lg:pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 lg:pb-4 scroll-container">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -323,7 +323,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       <div
         className={[
           'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-          'fixed left-0 right-0 transition-all duration-200',
+          'fixed left-0 right-0',
           isKeyboardOpen ? 'bottom-0' : 'bottom-16',
           'lg:static lg:bottom-auto lg:flex-shrink-0',
         ].join(' ')}

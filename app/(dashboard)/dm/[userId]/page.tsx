@@ -14,11 +14,10 @@ export default function DMPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetcher('/api/members');
+      const res = await fetcher(`/api/members/${userId}`);
       if (res.ok) {
         const data = await res.json();
-        const found = data.members?.find((m: any) => m.user_id === userId);
-        if (found?.user) setOtherUser(found.user);
+        setOtherUser(data.user);
       }
     } catch { /* handled globally */ } finally {
       setIsLoading(false);
