@@ -218,8 +218,8 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -290,14 +290,16 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input
+          Mobile: position:fixed just above the nav bar — rises naturally with the iOS keyboard (WhatsApp pattern).
+          Desktop (lg): normal static flow.
+      */}
       <div
-        className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80"
-        style={{
-          paddingBottom: isMobile && !isKeyboardOpen
-            ? 'calc(4.5rem + env(safe-area-inset-bottom))'
-            : 'calc(0.75rem + env(safe-area-inset-bottom))',
-        }}
+        className={[
+          'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
+          'fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+          'lg:static lg:bottom-auto lg:flex-shrink-0',
+        ].join(' ')}
       >
         <div className="flex items-end gap-2">
           <textarea

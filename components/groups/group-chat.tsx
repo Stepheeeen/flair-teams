@@ -302,14 +302,6 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  /* ── Scroll to bottom when keyboard opens ──────────────────────────────── */
-  useEffect(() => {
-    if (isKeyboardOpen) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isKeyboardOpen]);
-
   /* ── Typing broadcast ──────────────────────────────────────────────────── */
   const broadcastTyping = useCallback((isTyping: boolean) => {
     const ch = realtimeChannelRef.current;
@@ -482,8 +474,8 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -594,15 +586,19 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div ref={bottomRef} />
       </div>
 
-      {/* Input area */}
+      {/* Input area
+          Mobile: position:fixed just above the nav bar — rises naturally with the iOS keyboard (WhatsApp pattern).
+          Desktop (lg): normal static flow inside the flex column.
+      */}
       {canWrite ? (
         <div
-          className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80"
-          style={{
-            paddingBottom: isMobile && !isKeyboardOpen
-              ? 'calc(4.5rem + env(safe-area-inset-bottom))'
-              : 'calc(0.75rem + env(safe-area-inset-bottom))',
-          }}
+          className={[
+            'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
+            // Mobile: fixed, sitting above the bottom nav
+            'fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+            // Desktop: back to normal flow
+            'lg:static lg:bottom-auto lg:flex-shrink-0',
+          ].join(' ')}
         >
           {/* Reply preview */}
           {replyTo && (
@@ -614,10 +610,10 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
               <button onClick={() => setReplyTo(null)} className="text-muted-foreground font-bold text-xs">✕</button>
             </div>
           )}
-          
-          {/* @mention suggestions */}
+
+          {/* @mention suggestions — sits above the fixed input bar */}
           {showSuggestions && mentionSuggestions.length > 0 && (
-            <div className="absolute bottom-[calc(100%+8px)] left-4 right-4 z-10 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+            <div className="absolute bottom-full left-4 right-4 mb-1 z-10 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
               {mentionSuggestions.map((m) => (
                 <button key={m.id} onClick={() => insertMention(m)}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors text-left">
@@ -664,12 +660,11 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         </div>
       ) : (
         <div
-          className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80"
-          style={{
-            paddingBottom: isMobile && !isKeyboardOpen
-              ? 'calc(4.5rem + env(safe-area-inset-bottom))'
-              : 'calc(0.75rem + env(safe-area-inset-bottom))',
-          }}
+          className={[
+            'border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20',
+            'fixed left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))]',
+            'lg:static lg:bottom-auto lg:flex-shrink-0',
+          ].join(' ')}
         >
           <Megaphone className="w-4 h-4 inline mr-2" />
           Announcement channel — only admins and managers can post.
