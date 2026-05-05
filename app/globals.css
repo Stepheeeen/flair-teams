@@ -189,6 +189,7 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
+}
 
 /* ==========================================
    UTILITY CLASSES
@@ -251,5 +252,23 @@
   /* Focus ring using brand color */
   .flair-focus {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC078]/60;
+  }
+
+  /* 
+   * CSS-based Keyboard Handling for PWAs:
+   * When an input/textarea is focused, the virtual keyboard pushes up the viewport.
+   * Hide the bottom nav natively without JS jitter, and drop the chat input to bottom-0.
+   */
+  body:has(input:focus, textarea:focus) nav.bottom-app-bar {
+    display: none !important;
+  }
+  
+  body:has(input:focus, textarea:focus) .chat-input-wrapper {
+    bottom: 0 !important;
+  }
+
+  /* Robust Scroll Anchoring */
+  .scroll-container {
+    overflow-anchor: auto;
   }
 }

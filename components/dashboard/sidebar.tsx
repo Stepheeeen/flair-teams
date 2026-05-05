@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
-import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 
 interface Group {
   _id: string;
@@ -190,8 +189,6 @@ function BottomAppBar({
 }) {
   const { token } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
-  const keyboardHeight = useKeyboardHeight();
-  const isKeyboardOpen = keyboardHeight > 80;
 
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
@@ -206,7 +203,7 @@ function BottomAppBar({
     <>
       {/* Bottom app bar */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md"
+        className="bottom-app-bar lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-md"
       >
         <div className="flex items-stretch h-16">
           {/* Home */}

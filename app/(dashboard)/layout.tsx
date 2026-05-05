@@ -28,25 +28,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // ── Keyboard-aware viewport height ──────────────────────────────────────────
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const update = () => {
-      // Use visualViewport height to handle iOS keyboard correctly
-      document.documentElement.style.setProperty('--actual-vh', `${vv.height}px`);
-    };
-
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    update();
-
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-    };
-  }, []);
+  // Rely entirely on CSS 100dvh and the interactiveWidget: 'resizes-content' meta tag
+  // defined in the root layout to avoid JS resize jitter when the keyboard opens.
 
   useEffect(() => {
     if (!isLoading) {
@@ -67,8 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div 
-      className="flex overflow-hidden overscroll-none"
-      style={{ height: 'var(--actual-vh, 100dvh)' }}
+      className="flex overflow-hidden overscroll-none h-[100dvh]"
     >
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

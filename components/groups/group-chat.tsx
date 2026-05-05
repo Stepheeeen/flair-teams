@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
-import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
@@ -296,20 +295,9 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   }, [channelId, channelType]);
 
   /* ── Auto-scroll ───────────────────────────────────────────────────────── */
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Scroll to latest message when keyboard opens on iOS
-  useEffect(() => {
-    if (isKeyboardOpen) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isKeyboardOpen]);
-
-  const keyboardHeight = useKeyboardHeight();
-  const isKeyboardOpen = keyboardHeight > 80;
-
   /* ── Typing broadcast ──────────────────────────────────────────────────── */
   const broadcastTyping = useCallback((isTyping: boolean) => {
     const ch = realtimeChannelRef.current;
@@ -600,14 +588,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
       */}
       {canWrite ? (
         <div
-          className={[
-            'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-            // Mobile: fixed
-            'fixed left-0 right-0',
-            isKeyboardOpen ? 'bottom-0' : 'bottom-16',
-            // Desktop: back to normal flow
-            'lg:static lg:bottom-auto lg:flex-shrink-0',
-          ].join(' ')}
+          className="chat-input-wrapper border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
         >
           {/* Reply preview */}
           {replyTo && (
@@ -669,12 +650,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         </div>
       ) : (
         <div
-          className={[
-            'border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20',
-            'fixed left-0 right-0 transition-all duration-200',
-            isKeyboardOpen ? 'bottom-0' : 'bottom-16',
-            'lg:static lg:bottom-auto lg:flex-shrink-0',
-          ].join(' ')}
+          className="chat-input-wrapper border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
         >
           <Megaphone className="w-4 h-4 inline mr-2" />
           Announcement channel — only admins and managers can post.

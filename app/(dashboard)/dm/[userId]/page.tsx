@@ -26,14 +26,6 @@ export default function DMPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="h-full">
       <DirectMessageChat otherUserId={userId as string} otherUser={otherUser} />

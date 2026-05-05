@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
-import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2, ArrowLeft, Reply } from 'lucide-react';
@@ -80,8 +79,6 @@ function Avatar({ name, src, token }: { name: string; src?: string; token?: stri
 export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatProps) {
   const { user, fetcher, token } = useAuth();
   const isMobile = useIsMobile();
-  const keyboardHeight = useKeyboardHeight();
-  const isKeyboardOpen = keyboardHeight > 80;
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -139,13 +136,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Scroll to latest message when keyboard opens on iOS
-  useEffect(() => {
-    if (isKeyboardOpen) {
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isKeyboardOpen]);
+  // Removed JS-based keyboard scroll anchoring; CSS overflow-anchor handles it natively.
 
   const broadcastTyping = () => {
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: user?.id } });
@@ -321,12 +312,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
           Desktop (lg): normal static flow.
       */}
       <div
-        className={[
-          'border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20',
-          'fixed left-0 right-0',
-          isKeyboardOpen ? 'bottom-0' : 'bottom-16',
-          'lg:static lg:bottom-auto lg:flex-shrink-0',
-        ].join(' ')}
+        className="chat-input-wrapper border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
       >
         {/* Reply preview */}
         {replyTo && (
