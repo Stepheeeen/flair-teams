@@ -34,17 +34,19 @@ function GroupIcon({ type, is_private }: { type: string; is_private: boolean }) 
 function DesktopSidebarContent({
   user, pathname, groups, groupsOpen, setGroupsOpen,
   defaultTeamId, showCreateGroup, setShowCreateGroup,
+  dmUnreadCount,
 }: {
   user: any; pathname: string; groups: Group[];
   groupsOpen: boolean; setGroupsOpen: (v: boolean) => void;
   defaultTeamId: string | null; showCreateGroup: boolean;
   setShowCreateGroup: (v: boolean) => void;
+  dmUnreadCount: number;
 }) {
   const { token } = useAuth();
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
 
-  const navItem = (href: string, label: string, icon: React.ReactNode, exact = false) => {
+  const navItem = (href: string, label: string, icon: React.ReactNode, exact = false, badge?: number) => {
     const active = isActive(href, exact);
     return (
       <Link href={href} className="block">
@@ -54,7 +56,13 @@ function DesktopSidebarContent({
             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
         }`}>
           {icon}
-          <span className="truncate">{label}</span>
+          <span className="flex-1 truncate">{label}</span>
+          {badge !== undefined && badge > 0 && (
+            <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-auto"
+              style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
+              {badge > 9 ? '9+' : badge}
+            </span>
+          )}
         </div>
       </Link>
     );
@@ -81,7 +89,7 @@ function DesktopSidebarContent({
       <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
         {navItem('/dashboard', 'Dashboard', <LayoutDashboard className="w-3.5 h-3.5 flex-shrink-0" />, true)}
         {navItem('/members', 'Members', <Users className="w-3.5 h-3.5 flex-shrink-0" />)}
-        {navItem('/dm', 'Direct Messages', <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />)}
+        {navItem('/dm', 'Direct Messages', <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />, false, dmUnreadCount)}
 
         {/* Channels section */}
         <div className="pt-3">
@@ -169,7 +177,7 @@ function DesktopSidebarContent({
 
 // ─── Mobile bottom app bar ───────────────────────────────────────────────────
 function BottomAppBar({
-  pathname, groups, user, defaultTeamId, showCreateGroup, setShowCreateGroup,
+  pathname, groups, user, defaultTeamId, showCreateGroup, setShowCreateGroup, dmUnreadCount,
 }: {
   pathname: string;
   groups: Group[];
@@ -177,6 +185,7 @@ function BottomAppBar({
   defaultTeamId: string | null;
   showCreateGroup: boolean;
   setShowCreateGroup: (v: boolean) => void;
+  dmUnreadCount: number;
 }) {
   const { token } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -196,11 +205,11 @@ function BottomAppBar({
   const channelActive = pathname.startsWith('/groups');
 
   // Hide app bar in specific chat views so the keyboard and input area aren't blocked
-  const isChatView = pathname.match(/^\/(dm|groups)\/.+/);
+  // const isChatView = pathname.match(/^\/(dm|groups)\/.+/);
 
-  if (isChatView && !moreOpen) {
-    return null;
-  }
+  // if (isChatView && !moreOpen) {
+  //   return null;
+  // }
 
   return (
     <>
@@ -225,7 +234,15 @@ function BottomAppBar({
 
           {/* Direct Messages */}
           <Link href="/dm" className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors">
-            <MessageCircle className={`w-5 h-5 ${isActive('/dm') ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+            <div className="relative">
+              <MessageCircle className={`w-5 h-5 ${isActive('/dm') ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+              {dmUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full text-[8px] font-bold flex items-center justify-center"
+                  style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
+                  {dmUnreadCount > 9 ? '9+' : dmUnreadCount}
+                </span>
+              )}
+            </div>
             <span className={`text-[10px] font-semibold tracking-wide ${isActive('/dm') ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>DMs</span>
           </Link>
 
@@ -357,6 +374,7 @@ export function Sidebar() {
   const [groupsOpen, setGroupsOpen] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [defaultTeamId, setDefaultTeamId] = useState<string | null>(null);
+  const [dmUnreadCount, setDmUnreadCount] = useState(0);
 
   const fetchGroups = useCallback(async () => {
     try {
@@ -378,12 +396,20 @@ export function Sidebar() {
   }, [fetcher]);
 
   useEffect(() => {
-    if (user) fetchGroups();
-  }, [user, fetchGroups]);
+    if (user) {
+      fetchGroups();
+      fetcher('/api/dm').then(res => res.ok ? res.json() : null).then(data => {
+        if (data?.conversations) {
+          const count = data.conversations.reduce((acc: number, c: any) => acc + (c.unread_count || 0), 0);
+          setDmUnreadCount(count);
+        }
+      }).catch(() => {});
+    }
+  }, [user, fetchGroups, fetcher]);
 
   const sharedProps = {
     user, pathname, groups, groupsOpen, setGroupsOpen,
-    defaultTeamId, showCreateGroup, setShowCreateGroup,
+    defaultTeamId, showCreateGroup, setShowCreateGroup, dmUnreadCount,
   };
 
   return (

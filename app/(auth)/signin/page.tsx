@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('invite');
   const { signIn, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,6 +26,9 @@ export default function SignInPage() {
     setIsSubmitting(true);
 
     try {
+      if (inviteToken) {
+        localStorage.setItem('pending_invite', inviteToken);
+      }
       await signIn(email, password);
       router.push('/dashboard');
     } catch (err: any) {

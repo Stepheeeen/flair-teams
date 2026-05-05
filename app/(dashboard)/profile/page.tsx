@@ -104,7 +104,7 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 pb-12">
+      <div className="flex-1 overflow-y-auto min-h-0 pb-24 lg:pb-12">
         {activeTab === 'profile' && (
           <Card className="border-border shadow-sm max-w-2xl">
             <CardHeader>

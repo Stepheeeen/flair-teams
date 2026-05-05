@@ -19,6 +19,7 @@ export interface User {
   name: string;
   role: 'admin' | 'manager' | 'member';
   avatar_url?: string;
+  job_title?: string;
 }
 
 interface AuthContextType {

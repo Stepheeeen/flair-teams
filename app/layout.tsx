@@ -56,6 +56,7 @@ export const metadata: Metadata = {
     'Flair Technologies',
     'flairtechlabs',
   ],
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
@@ -63,6 +64,10 @@ export const viewport: Viewport = {
     { media: '(prefers-color-scheme: light)', color: '#FDF9EC' },
     { media: '(prefers-color-scheme: dark)', color: '#0E1628' },
   ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

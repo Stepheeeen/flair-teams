@@ -7,10 +7,11 @@ import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
   Send, Reply, Hash, Users, Lock, Megaphone, ChevronRight,
-  Loader2, Paperclip, File as FileIcon, X, Download, Settings
+  Loader2, Paperclip, File as FileIcon, X, Download, Settings, ArrowLeft
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { ManageChannelDialog } from './manage-channel-dialog';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -437,8 +438,11 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   return (
     <div className="flex flex-col h-full bg-background relative">
       {/* Channel header */}
-      <div className="border-b border-border px-6 py-3 flex items-center gap-3 flex-shrink-0 bg-card/80 backdrop-blur-sm">
-        <span className="text-muted-foreground"><ChannelIcon type={channelInfo.type} is_private={channelInfo.is_private} /></span>
+      <div className="border-b border-border px-4 lg:px-6 py-3 flex items-center gap-3 flex-shrink-0 bg-card/80 backdrop-blur-sm">
+        <Link href="/dashboard" className="lg:hidden">
+          <Button variant="ghost" size="icon" className="w-8 h-8"><ArrowLeft className="w-4 h-4" /></Button>
+        </Link>
+        <span className="text-muted-foreground hidden lg:inline-block"><ChannelIcon type={channelInfo.type} is_private={channelInfo.is_private} /></span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {parentGroupName && (
@@ -499,6 +503,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                   prev.sender_id === msg.sender_id &&
                   new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000;
                 const isOwn = msg.sender_id === user?.id;
+                const repliedMsg = msg.reply_to ? messages.find(m => m._id === msg.reply_to) : null;
 
                 return (
                   <SwipeableMessage key={msg._id} isOwn={isOwn} onSwipe={() => setReplyTo(msg)}>
@@ -513,6 +518,14 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                               {isOwn ? 'You' : msg.sender_name}
                             </span>
                             <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
+                          </div>
+                        )}
+
+                        {repliedMsg && (
+                          <div className={`flex items-center gap-1.5 px-3 py-1 mb-1 rounded-xl bg-muted/50 border-l-2 text-[11px] max-w-[85%] ${isOwn ? 'border-primary/50' : 'border-border'}`} style={{ borderColor: isOwn ? undefined : '#FFC078' }}>
+                            <Reply className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                            <span className="font-semibold truncate max-w-[80px]">{repliedMsg.sender_name}:</span>
+                            <span className="text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">{repliedMsg.content || 'Attachment'}</span>
                           </div>
                         )}
 
@@ -573,7 +586,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
 
       {/* Input area */}
       {canWrite ? (
-        <div className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80">
+        <div className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-3">
           {/* Reply preview */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-muted/50 border-l-2" style={{ borderColor: '#FFC078' }}>
@@ -584,10 +597,10 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
               <button onClick={() => setReplyTo(null)} className="text-muted-foreground font-bold text-xs">✕</button>
             </div>
           )}
-
+          
           {/* @mention suggestions */}
           {showSuggestions && mentionSuggestions.length > 0 && (
-            <div className="absolute bottom-20 left-4 right-4 z-10 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+            <div className="absolute bottom-[calc(100%+8px)] left-4 right-4 z-10 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
               {mentionSuggestions.map((m) => (
                 <button key={m.id} onClick={() => insertMention(m)}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-muted transition-colors text-left">
@@ -603,7 +616,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect}
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.webp,.gif,.zip" />
             <Button variant="ghost" size="icon"
-              className="w-9 h-9 rounded-xl flex-shrink-0 text-muted-foreground hover:text-foreground"
+              className="w-9 h-9 rounded-xl flex-shrink-0 text-muted-foreground hover:text-foreground mb-[6px]"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || isSending}
               title="Attach file">
@@ -621,19 +634,19 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                   : `Message #${channelInfo.name}  •  Enter to send  •  Shift+Enter for new line  •  @ to mention`}
                 rows={1}
                 disabled={isSending || isUploading}
-                className="w-full resize-none bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-40"
+                className="w-full resize-none bg-muted/50 border border-border rounded-xl px-4 py-3 text-[16px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-40"
               />
             </div>
 
             <Button onClick={() => sendMessage()} disabled={!input.trim() || isSending} size="icon"
-              className="h-9 w-9 rounded-xl flex-shrink-0"
+              className="h-9 w-9 rounded-xl flex-shrink-0 mb-[6px]"
               style={{ background: input.trim() ? 'linear-gradient(135deg,#FFC078,#DA9646)' : undefined, color: input.trim() ? '#1B1C1B' : undefined }}>
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
         </div>
       ) : (
-        <div className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80">
+        <div className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-3">
           <Megaphone className="w-4 h-4 inline mr-2" />
           Announcement channel — only admins and managers can post.
         </div>

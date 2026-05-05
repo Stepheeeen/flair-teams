@@ -194,8 +194,8 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b border-border px-4 py-3 flex items-center gap-3 bg-card/80 backdrop-blur-sm flex-shrink-0">
-        <Link href="/members">
-          <Button variant="ghost" size="icon" className="w-8 h-8"><ArrowLeft className="w-4 h-4" /></Button>
+        <Link href="/dm">
+          <Button variant="ghost" size="icon" className="w-8 h-8 lg:hidden"><ArrowLeft className="w-4 h-4" /></Button>
         </Link>
         <Avatar name={displayName} src={otherUser?.avatar_url} token={token} />
         <div>
@@ -279,7 +279,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       </div>
 
       {/* Input */}
-      <div className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80">
+      <div className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-3">
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
@@ -289,13 +289,13 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
             placeholder={`Message ${displayName}…`}
             rows={1}
             disabled={isSending}
-            className="flex-1 resize-none bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-40"
+            className="flex-1 resize-none bg-muted/50 border border-border rounded-xl px-4 py-3 text-[16px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-40"
           />
           <Button
             onClick={send}
             disabled={!input.trim() || isSending}
             size="icon"
-            className="h-10 w-10 rounded-xl flex-shrink-0"
+            className="h-9 w-9 rounded-xl flex-shrink-0 mb-[6px]"
             style={{ background: input.trim() ? 'linear-gradient(135deg,#FFC078,#DA9646)' : undefined, color: input.trim() ? '#1B1C1B' : undefined }}
           >
             {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

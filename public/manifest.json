@@ -1,0 +1,21 @@
+{
+  "name": "Flair Teams",
+  "short_name": "Flair Teams",
+  "description": "Collaborative project management and messaging for modern teams.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FDF9EC",
+  "theme_color": "#FFC078",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

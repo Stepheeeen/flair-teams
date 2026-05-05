@@ -99,7 +99,19 @@ export async function POST(
       const ch = supabase.channel(`dm:${convId}`);
       await ch.send({ type: 'broadcast', event: 'new_message', payload: message.toObject() });
       await supabase.removeChannel(ch);
-    } catch { /* non-blocking */ }
+
+      // Create a persistent notification for the recipient
+      const { Notification } = await import('@/lib/models');
+      await Notification.create({
+        recipient_id: otherId,
+        sender_id: user.id,
+        sender_name: senderDoc?.name || user.email,
+        type: 'dm',
+        content: `sent you a message`,
+        link: `/dm/${user.id}`,
+        read: false,
+      });
+    } catch (e) { console.error('DM Notification Error:', e); }
 
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -28,9 +28,12 @@ function FieldError({ msg }: { msg?: string }) {
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('invite');
+  const presetEmail = searchParams.get('email');
   const { signUp } = useAuth();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(presetEmail || '');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -49,6 +52,9 @@ export default function SignUpPage() {
 
     setIsLoading(true);
     try {
+      if (inviteToken) {
+        localStorage.setItem('pending_invite', inviteToken);
+      }
       const { needs_confirmation } = await signUp(email.trim(), password, name.trim());
       if (needs_confirmation) {
         setConfirmedEmail(email.trim()); // show check-email screen

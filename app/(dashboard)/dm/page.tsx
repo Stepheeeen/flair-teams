@@ -63,7 +63,7 @@ export default function DMIndexPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-3">
           {conversations.map((conv) => {
             const other = conv.other_user;
             const name = other?.name || other?.email || 'Member';
