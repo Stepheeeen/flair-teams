@@ -14,8 +14,8 @@ function Preloader() {
         <Image
           src="/logo.png"
           alt="Flair Technologies"
-          width={80}
-          height={80}
+          width={52}
+          height={52}
           className="object-contain drop-shadow-xl"
           priority
         />
@@ -27,6 +27,28 @@ function Preloader() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+
+  // ── Keyboard-aware viewport height ──────────────────────────────────────────
+  // Sets --actual-vh so the layout uses the visual viewport height (not the
+  // layout viewport which stays fixed when iOS keyboard opens).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const h = vv.height;
+      document.documentElement.style.setProperty('--actual-vh', `${h}px`);
+    };
+
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update(); // set initial value
+
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {
@@ -46,7 +68,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return <Preloader />; // brief flash while redirect fires
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden overscroll-none">
+    <div
+      className="flex overflow-hidden overscroll-none"
+      style={{ height: 'var(--actual-vh, 100dvh)' }}
+    >
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />

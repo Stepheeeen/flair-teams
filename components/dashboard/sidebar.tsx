@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
+import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 
 interface Group {
   _id: string;
@@ -189,27 +190,22 @@ function BottomAppBar({
 }) {
   const { token } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
+  const keyboardHeight = useKeyboardHeight();
 
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
 
-  // Primary tabs shown in the bottom bar
-  const tabs = [
-    { href: '/dashboard', label: 'Home', icon: LayoutDashboard, exact: true },
-    { href: '/members', label: 'Members', icon: Users },
-    { href: '/dm', label: 'Messages', icon: MessageCircle },
-    { href: '/groups', label: 'Channels', icon: MessageSquare },
-  ];
-
   // Check if current path is a channel (for "Channels" tab active state)
   const channelActive = pathname.startsWith('/groups');
 
-  // Hide app bar in specific chat views so the keyboard and input area aren't blocked
-  // const isChatView = pathname.match(/^\/(dm|groups)\/.+/);
+  // Hide app bar when keyboard is open in a chat view so it doesn't
+  // overlap the message input area on iOS.
+  const isChatView = /^\/(dm|groups)\/.+/.test(pathname);
+  const isKeyboardOpen = keyboardHeight > 80;
 
-  // if (isChatView && !moreOpen) {
-  //   return null;
-  // }
+  if (isChatView && isKeyboardOpen && !moreOpen) {
+    return null;
+  }
 
   return (
     <>

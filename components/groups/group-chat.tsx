@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
+import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
@@ -213,6 +214,8 @@ async function uploadFile(
 export function GroupChat({ channelType, channelId, channelInfo, parentGroupName, headerActions }: GroupChatProps) {
   const { user, authHeaders, token } = useAuth();
   const isMobile = useIsMobile();
+  const keyboardHeight = useKeyboardHeight();
+  const isKeyboardOpen = keyboardHeight > 80;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -298,6 +301,14 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  /* ── Scroll to bottom when keyboard opens ──────────────────────────────── */
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isKeyboardOpen]);
 
   /* ── Typing broadcast ──────────────────────────────────────────────────── */
   const broadcastTyping = useCallback((isTyping: boolean) => {
@@ -585,7 +596,14 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
 
       {/* Input area */}
       {canWrite ? (
-        <div className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-3">
+        <div
+          className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80"
+          style={{
+            paddingBottom: isMobile && !isKeyboardOpen
+              ? 'calc(4.5rem + env(safe-area-inset-bottom))'
+              : 'calc(0.75rem + env(safe-area-inset-bottom))',
+          }}
+        >
           {/* Reply preview */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-muted/50 border-l-2" style={{ borderColor: '#FFC078' }}>
@@ -645,7 +663,14 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
           </div>
         </div>
       ) : (
-        <div className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-3">
+        <div
+          className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80"
+          style={{
+            paddingBottom: isMobile && !isKeyboardOpen
+              ? 'calc(4.5rem + env(safe-area-inset-bottom))'
+              : 'calc(0.75rem + env(safe-area-inset-bottom))',
+          }}
+        >
           <Megaphone className="w-4 h-4 inline mr-2" />
           Announcement channel — only admins and managers can post.
         </div>

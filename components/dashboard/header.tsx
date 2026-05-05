@@ -115,7 +115,7 @@ export function Header() {
       <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm px-4 lg:px-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
         <div className="flex items-center gap-3">
           {/* Logo (mobile only) */}
-          <div className="lg:hidden relative w-7 h-7 flex-shrink-0">
+          <div className="lg:hidden relative w-5 h-5 flex-shrink-0">
             <Image src="/logo.png" alt="Flair Teams" fill className="object-contain" priority />
           </div>
           {/* Page title */}

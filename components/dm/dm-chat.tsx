@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
+import { useKeyboardHeight } from '@/lib/hooks/use-keyboard-height';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2, ArrowLeft } from 'lucide-react';
@@ -78,6 +79,8 @@ function Avatar({ name, src, token }: { name: string; src?: string; token?: stri
 export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatProps) {
   const { user, fetcher, token } = useAuth();
   const isMobile = useIsMobile();
+  const keyboardHeight = useKeyboardHeight();
+  const isKeyboardOpen = keyboardHeight > 80;
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -133,6 +136,15 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
   }, [otherUserId]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Scroll to latest message when keyboard opens on iOS
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isKeyboardOpen]);
+
 
   const broadcastTyping = () => {
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: user?.id } });
@@ -279,7 +291,14 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       </div>
 
       {/* Input */}
-      <div className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-3">
+      <div
+        className="border-t border-border px-4 py-3 flex-shrink-0 bg-card/80"
+        style={{
+          paddingBottom: isMobile && !isKeyboardOpen
+            ? 'calc(4.5rem + env(safe-area-inset-bottom))'
+            : 'calc(0.75rem + env(safe-area-inset-bottom))',
+        }}
+      >
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
