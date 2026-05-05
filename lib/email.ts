@@ -113,6 +113,31 @@ export async function sendTaskAssignedEmail({
   });
 }
 
+/** Send a summary email of unread messages */
+export async function sendUnreadMessagesEmail({
+  to, userName, count, source, url
+}: {
+  to: string;
+  userName: string;
+  count: number;
+  source: string; // 'Direct Messages' | '#channel-name'
+  url: string;
+}) {
+  if (!process.env.RESEND_API_KEY) return;
+
+  await getResend()?.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `You have ${count} unread message${count > 1 ? 's' : ''} in ${source}`,
+    html: emailTemplate({
+      title: `You missed some messages, <strong>${escapeHtml(userName)}</strong>`,
+      body: `You have <strong>${count}</strong> unread message${count > 1 ? 's' : ''} waiting for you in <strong>${escapeHtml(source)}</strong>.<br/><br/>Jump back in to see what your team is discussing.`,
+      ctaText: 'Read Messages',
+      ctaUrl: url,
+    }),
+  });
+}
+
 // ─── Shared email template ──────────────────────────────────────────────────
 function emailTemplate({
   title, body, ctaText, ctaUrl,

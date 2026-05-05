@@ -252,7 +252,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                           <span className="text-[11px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
                         </div>
                       )}
-                      <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary/20 text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
+                      <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                           {msg.content}
                         </p>

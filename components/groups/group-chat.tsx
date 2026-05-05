@@ -90,15 +90,14 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Render message content with highlighted @mentions */
 function MessageContent({ content, currentUserId, mentions }: { content: string; currentUserId: string; mentions?: string[] }) {
   // Simple regex highlight — bold @mentions
   const parts = content.split(/(@[\w-]+)/g);
   return (
-    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
       {parts.map((part, i) =>
         /^@[\w-]/.test(part) ? (
-          <span key={i} className="font-bold px-0.5 rounded" style={{ color: '#DA9646', background: 'rgba(255,192,120,0.12)' }}>{part}</span>
+          <span key={i} className="font-bold px-0.5 rounded bg-foreground/10">{part}</span>
         ) : part
       )}
     </p>
@@ -552,7 +551,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                             </a>
                           )
                         ) : (
-                          <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary/20 text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
+                          <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
                             <MessageContent content={msg.content} currentUserId={user?.id || ''} mentions={msg.mentions} />
                           </div>
                         )}

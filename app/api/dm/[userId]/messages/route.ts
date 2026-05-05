@@ -104,12 +104,24 @@ export async function POST(
       const { Notification } = await import('@/lib/models');
       await Notification.create({
         recipient_id: otherId,
-        sender_id: user.id,
-        sender_name: senderDoc?.name || user.email,
-        type: 'dm',
-        content: `sent you a message`,
-        link: `/dm/${user.id}`,
+        type: 'direct_message',
+        title: 'New Direct Message',
+        body: `${senderDoc?.name || user.email} sent you a message`,
+        link: `/dm`,
         read: false,
+        actor_id: user.id,
+        actor_name: senderDoc?.name || user.email,
+      });
+
+      // Send Offline Web Push / Email Notification
+      const { sendOfflineNotification } = await import('@/lib/notifications');
+      await sendOfflineNotification({
+        recipientId: otherId,
+        senderName: senderDoc?.name || user.email,
+        sourceName: 'Direct Messages',
+        messagePreview: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+        url: `/dm`,
+        type: 'dm'
       });
     } catch (e) { console.error('DM Notification Error:', e); }
 

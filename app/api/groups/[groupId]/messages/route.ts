@@ -163,6 +163,31 @@ export async function POST(
       // Realtime broadcast failure must never block the response
     }
 
+    // ── Offline Notifications (Push + Email) ─────────────────────────────────
+    try {
+      const { sendOfflineNotification } = await import('@/lib/notifications');
+      
+      // Notify all group members except the sender
+      const memberIds = group.is_private 
+        ? group.members 
+        : (await TeamMember.find({ team_id: group.team_id }).select('user_id').lean() as any[]).map(m => m.user_id);
+        
+      const recipientIds = memberIds.filter((id: string) => id !== user.id);
+      
+      for (const rId of recipientIds) {
+        sendOfflineNotification({
+          recipientId: rId,
+          senderName,
+          sourceName: `#${group.name}`,
+          messagePreview: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+          url: `/groups/${groupId}`,
+          type: 'channel'
+        }).catch(() => {}); // Fire and forget
+      }
+    } catch (e) {
+      console.error('Group Notification Error:', e);
+    }
+
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {
     return handleApiError(error);

@@ -12,6 +12,14 @@ export const userSchema = new Schema(
     role: { type: String, enum: ['admin', 'manager', 'member'], default: 'member' },
     /** Free-text job title / position in the company (e.g. "CEO", "Frontend Dev") */
     job_title: { type: String, default: '' },
+    push_subscriptions: [{
+      endpoint: String,
+      keys: {
+        p256dh: String,
+        auth: String
+      }
+    }],
+    last_notified_at: Date,
   },
   { timestamps: true }
 );
