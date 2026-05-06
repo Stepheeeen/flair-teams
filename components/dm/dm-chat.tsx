@@ -5,7 +5,13 @@ import { useAuth } from '@/lib/auth-context';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
-import { Send, Loader2, ArrowLeft, Reply } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, Reply, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -19,6 +25,8 @@ interface DMMessage {
   createdAt: string;
   read: boolean;
   reply_to?: DMMessage | null;
+  edited?: boolean;
+  deleted?: boolean;
 }
 
 interface OtherUser {
@@ -85,6 +93,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
   const [isSending, setIsSending] = useState(false);
   const [typingUsers, setTypingUsers] = useState(false);
   const [replyTo, setReplyTo] = useState<DMMessage | null>(null);
+  const [editingMessage, setEditingMessage] = useState<DMMessage | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,6 +137,14 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       }
     });
 
+    ch.on('broadcast', { event: 'message_updated' }, ({ payload }) => {
+      setMessages((prev) => prev.map((m) => m._id === payload._id ? { ...m, content: payload.content, edited: payload.edited } : m));
+    });
+
+    ch.on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
+      setMessages((prev) => prev.map((m) => m._id === payload._id ? { ...m, deleted: true, content: payload.content, reply_to: null } : m));
+    });
+
     ch.subscribe();
     channelRef.current = ch;
     return () => { supabase.removeChannel(ch); };
@@ -148,6 +165,30 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
     if (!content || isSending) return;
 
     setIsSending(true);
+
+    if (editingMessage) {
+      try {
+        const res = await fetcher(`/api/dm/messages/${editingMessage._id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ content }),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          toast.error(data.error || 'Failed to edit message');
+        } else {
+          const data = await res.json();
+          setMessages((prev) => prev.map((m) => m._id === editingMessage._id ? { ...m, content: data.message.content, edited: true } : m));
+          setInput('');
+          setEditingMessage(null);
+        }
+      } catch {
+        toast.error('Network error');
+      } finally {
+        setIsSending(false);
+      }
+      return;
+    }
+
     const optId = `opt-${Date.now()}`;
     const opt: DMMessage = {
       _id: optId,
@@ -268,23 +309,53 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                         )}
 
                         <div 
-                          className={`py-1.5 px-3 rounded-2xl max-w-[85%] relative group transition-all ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}
+                          className={`py-1.5 px-3 rounded-2xl max-w-[85%] relative group transition-all ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'} ${msg.deleted ? 'opacity-50 italic' : ''}`}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                             {msg.content}
                           </p>
-                          
-                          {/* Reply button (appears on hover) */}
-                          <button
-                            onClick={() => {
-                              setReplyTo(msg);
-                              inputRef.current?.focus();
-                            }}
-                            className={`absolute top-0 ${isOwn ? '-left-8' : '-right-8'} p-1.5 rounded-full bg-card border border-border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity`}
-                            title="Reply"
-                          >
-                            <Reply className="w-3 h-3 text-muted-foreground" />
-                          </button>
+                          {msg.edited && <span className="text-[10px] ml-2 opacity-70 block text-right">(edited)</span>}
+                        </div>
+                        
+                        {/* Actions (visible on hover or on mobile) */}
+                        <div className="md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity flex items-center gap-1 self-center ml-1">
+                          {!msg.deleted && (
+                            <button
+                              onClick={() => {
+                                setReplyTo(msg);
+                                inputRef.current?.focus();
+                              }}
+                              className="p-1 text-muted-foreground hover:text-foreground"
+                              title="Reply"
+                            >
+                              <Reply className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {isOwn && !msg.deleted && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-1 text-muted-foreground hover:text-foreground" title="More">
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setEditingMessage(msg); setInput(msg.content); setReplyTo(null); inputRef.current?.focus(); }}>
+                                  <Edit2 className="w-4 h-4 mr-2" />
+                                  Edit message
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={async () => {
+                                  try {
+                                    const res = await fetcher(`/api/dm/messages/${msg._id}`, { method: 'DELETE' });
+                                    if (!res.ok) throw new Error();
+                                    setMessages(prev => prev.map(m => m._id === msg._id ? { ...m, deleted: true, content: 'This message was deleted', reply_to: null } : m));
+                                  } catch { toast.error('Failed to delete message'); }
+                                }} className="text-destructive focus:text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete message
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
                   </div>
@@ -314,14 +385,18 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       <div
         className="chat-input-wrapper border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
       >
-        {/* Reply preview */}
-        {replyTo && (
+        {/* Reply/Edit preview */}
+        {(replyTo || editingMessage) && (
           <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-muted/50 border-l-2" style={{ borderColor: '#FFC078' }}>
-            <Reply className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            {editingMessage ? (
+              <Edit2 className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            ) : (
+              <Reply className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            )}
             <p className="text-xs text-muted-foreground flex-1 truncate">
-              Replying to <strong>{replyTo.sender_name}</strong>: {replyTo.content}
+              {editingMessage ? 'Editing message' : <>Replying to <strong>{replyTo!.sender_name}</strong>: {replyTo!.content}</>}
             </p>
-            <button onClick={() => setReplyTo(null)} className="text-muted-foreground font-bold text-xs">✕</button>
+            <button onClick={() => { setReplyTo(null); setEditingMessage(null); if(editingMessage) setInput(''); }} className="text-muted-foreground font-bold text-xs">✕</button>
           </div>
         )}
 

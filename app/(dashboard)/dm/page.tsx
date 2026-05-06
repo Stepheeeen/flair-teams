@@ -61,7 +61,7 @@ export default function DMIndexPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 w-full max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-5 sm:mb-6">
         <h1 className="text-2xl sm:text-3xl font-black">Direct Messages</h1>
         {conversations.some(c => c.unread_count > 0) && (

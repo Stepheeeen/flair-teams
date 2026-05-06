@@ -27,7 +27,7 @@ export default function DMPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <DirectMessageChat otherUserId={userId as string} otherUser={otherUser} />
     </div>
   );

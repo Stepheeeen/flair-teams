@@ -399,7 +399,7 @@ export function Sidebar() {
   return (
     <>
       {/* ── Desktop sidebar (visible ≥ lg) ── */}
-      <aside className="hidden lg:flex w-60 bg-sidebar border-r border-sidebar-border flex-col h-screen flex-shrink-0">
+      <aside className="hidden lg:flex w-60 bg-sidebar border-r border-sidebar-border flex-col h-full flex-shrink-0">
         <DesktopSidebarContent {...sharedProps} />
       </aside>
 

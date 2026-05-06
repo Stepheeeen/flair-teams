@@ -620,7 +620,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                           </div>
                         )}
                       </div>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <div className="md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity flex items-center gap-1">
                         {!msg.deleted && (
                           <button onClick={() => setReplyTo(msg)} className="p-1 text-muted-foreground hover:text-foreground" title="Reply">
                             <Reply className="w-3.5 h-3.5" />
