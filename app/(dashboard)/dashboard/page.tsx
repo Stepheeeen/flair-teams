@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
+import { isManagerOrAbove } from '@/lib/client-roles';
 import { format } from 'date-fns';
 
 interface Group {
@@ -85,7 +86,7 @@ export default function DashboardPage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
-  const canCreate = user?.role === 'admin' || user?.role === 'manager';
+  const canCreate = isManagerOrAbove(user);
 
   return (
     <div className="flex-1 overflow-y-auto">

@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
+import { isManagerOrAbove } from '@/lib/client-roles';
 
 interface Group {
   _id: string;
@@ -106,7 +107,7 @@ export default function GroupPage() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="flex items-center justify-between">
                     Sub-groups
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {isManagerOrAbove(user) && (
                       <Button
                         size="icon"
                         variant="ghost"
@@ -148,7 +149,7 @@ export default function GroupPage() {
               {subgroupsOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
               Sub-groups
             </button>
-            {(user?.role === 'admin' || user?.role === 'manager') && (
+            {isManagerOrAbove(user) && (
               <Button
                 size="icon"
                 variant="ghost"
@@ -167,7 +168,7 @@ export default function GroupPage() {
             {subgroups.length === 0 ? (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                 No sub-groups yet.
-                {(user?.role === 'admin' || user?.role === 'manager') && (
+                {(user === null || isManagerOrAbove(user)) && (
                   <button
                     onClick={() => setShowCreateSubGroup(true)}
                     className="block mx-auto mt-1 text-primary hover:underline"

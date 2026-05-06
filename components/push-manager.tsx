@@ -36,7 +36,13 @@ export function PushManager() {
         if (permission !== 'granted') return;
 
         // Ensure we have a public key
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          const vapidRes = await fetch('/api/push/vapid');
+          const vapidData = await vapidRes.json();
+          vapidPublicKey = vapidData.publicKey;
+        }
+
         if (!vapidPublicKey) return;
 
         // Get existing subscription or create a new one

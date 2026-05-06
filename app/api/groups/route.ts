@@ -1,6 +1,7 @@
 import { requireAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { connectToDatabase } from '@/lib/db';
 import { Group, TeamMember } from '@/lib/models';
+import { isManagerOrAbove } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -51,10 +52,13 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Only admin/manager can create groups
+    // Only admin/manager (or manager-level job title) can create groups
     const member = await TeamMember.findOne({ team_id, user_id: user.id });
     if (!member) throw new ApiError(403, 'Not a member of this team');
-    if (type === 'announcement' && !['admin', 'manager'].includes(member.role)) {
+    if (!isManagerOrAbove(member.role, member.job_title)) {
+      throw new ApiError(403, 'Only admins and managers can create channels');
+    }
+    if (type === 'announcement' && !isManagerOrAbove(member.role, member.job_title)) {
       throw new ApiError(403, 'Only admins and managers can create announcement channels');
     }
 

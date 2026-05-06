@@ -1,5 +1,6 @@
 import { connectToDatabase } from '@/lib/db';
 import { TeamInvite, TeamMember, User } from '@/lib/models';
+import { isManagerJobTitle, effectiveRole } from '@/lib/roles';
 import { createSupabaseClient } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -94,16 +95,30 @@ export async function POST(
 
     // Ensure user exists in MongoDB (created during signup)
     let user = await User.findOne({ id: supabaseUser.id });
+
+    // Determine the correct role — manager job titles always confer manager role
+    const resolvedRole = effectiveRole(
+      invite.role || 'member',
+      invite.job_title
+    );
+
     if (!user) {
       user = await User.create({
         id: supabaseUser.id,
         email: supabaseUser.email,
         name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0],
-        role: invite.role || 'member',
+        role: resolvedRole,
+        job_title: invite.job_title || '',
       });
-    } else if (invite.role === 'manager' && user.role !== 'admin') {
-      await User.updateOne({ id: user.id }, { role: 'manager' });
-      user.role = 'manager';
+    } else {
+      // Upgrade role if the invite grants higher permissions; never downgrade an admin
+      if (resolvedRole === 'manager' && user.role !== 'admin') {
+        await User.updateOne({ id: user.id }, { role: 'manager', job_title: invite.job_title || user.job_title });
+        user.role = 'manager';
+      } else if (user.role === 'member' && invite.job_title) {
+        // At minimum sync job_title
+        await User.updateOne({ id: user.id }, { job_title: invite.job_title });
+      }
     }
 
     // Check if already a member
@@ -118,11 +133,12 @@ export async function POST(
       return NextResponse.json({ success: true, team_id: invite.team_id, already_member: true });
     }
 
-    // Add as team member
+    // Add as team member — store job_title and resolved role
     await TeamMember.create({
       team_id: invite.team_id,
       user_id: supabaseUser.id,
-      role: invite.role,
+      role: resolvedRole,
+      job_title: invite.job_title || '',
       invited_by: invite.created_by,
     });
 

@@ -1,6 +1,7 @@
 import { requireAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { connectToDatabase } from '@/lib/db';
 import { Group, SubGroup, TeamMember } from '@/lib/models';
+import { isManagerOrAbove } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -54,7 +55,7 @@ export async function POST(
     await connectToDatabase();
 
     const { group, member } = await resolveGroupAccess(groupId, user.id);
-    if (!['admin', 'manager'].includes(member.role)) {
+    if (!isManagerOrAbove(member.role, member.job_title)) {
       throw new ApiError(403, 'Only admins and managers can create sub-groups');
     }
 

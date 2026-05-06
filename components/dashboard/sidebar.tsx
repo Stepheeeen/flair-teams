@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
+import { isManagerOrAbove } from '@/lib/client-roles';
 
 interface Group {
   _id: string;
@@ -102,7 +103,7 @@ function DesktopSidebarContent({
               <MessageSquare className="w-3 h-3" />
               Channels
             </button>
-            {(user?.role === 'admin' || user?.role === 'manager') && defaultTeamId && (
+            {isManagerOrAbove(user) && defaultTeamId && (
               <Button
                 size="icon"
                 variant="ghost"
@@ -120,7 +121,7 @@ function DesktopSidebarContent({
               {groups.length === 0 ? (
                 <div className="px-3 py-3 text-center">
                   <p className="text-xs text-sidebar-foreground/30 italic">No channels yet</p>
-                  {(user?.role === 'admin' || user?.role === 'manager') && defaultTeamId && (
+                  {isManagerOrAbove(user) && defaultTeamId && (
                     <button
                       onClick={() => setShowCreateGroup(true)}
                       className="mt-1 text-xs font-semibold text-primary hover:underline"
@@ -273,7 +274,7 @@ function BottomAppBar({
                 <p className="font-bold text-sm">Channels</p>
               </div>
               <div className="flex items-center gap-2">
-                {(user?.role === 'admin' || user?.role === 'manager') && defaultTeamId && (
+                {isManagerOrAbove(user) && defaultTeamId && (
                   <button
                     onClick={() => { setShowCreateGroup(true); setMoreOpen(false); }}
                     className="flex items-center gap-1.5 text-xs font-semibold text-primary"
@@ -297,7 +298,7 @@ function BottomAppBar({
                 <div className="text-center py-8">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
                   <p className="text-sm text-muted-foreground">No channels yet</p>
-                  {(user?.role === 'admin' || user?.role === 'manager') && defaultTeamId && (
+                  {isManagerOrAbove(user) && defaultTeamId && (
                     <button
                       onClick={() => { setShowCreateGroup(true); setMoreOpen(false); }}
                       className="mt-2 text-sm font-semibold text-primary hover:underline"

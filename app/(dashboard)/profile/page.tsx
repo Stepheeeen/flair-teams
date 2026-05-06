@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Loader2, Save, User, Camera, Bell, Shield, PaintBucket } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { isManagerOrAbove } from '@/lib/client-roles';
 
 export default function ProfilePage() {
   const { user, authHeaders, token } = useAuth();
@@ -132,7 +133,7 @@ export default function ProfilePage() {
                   <p className="font-bold text-lg">{name || user?.name}</p>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
                   <span className="inline-flex mt-1.5 items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20">
-                    {user?.role}
+                    {isManagerOrAbove(user) && user?.role !== 'admin' ? 'manager' : user?.role}
                   </span>
                 </div>
               </div>
@@ -225,9 +226,17 @@ export default function ProfilePage() {
                         const perm = await Notification.requestPermission();
                         if (perm === 'granted') {
                           const registration = await navigator.serviceWorker.ready;
-                          const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                          
+                          // Fetch dynamically to avoid issues with un-restarted dev servers
+                          let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
                           if (!vapidPublicKey) {
-                            toast.error('VAPID public key not configured.');
+                            const vapidRes = await fetch('/api/push/vapid');
+                            const vapidData = await vapidRes.json();
+                            vapidPublicKey = vapidData.publicKey;
+                          }
+                          
+                          if (!vapidPublicKey) {
+                            toast.error('VAPID public key not configured on server.');
                             return;
                           }
                           let subscription = await registration.pushManager.getSubscription();

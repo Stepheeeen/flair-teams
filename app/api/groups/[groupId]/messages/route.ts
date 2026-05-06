@@ -1,6 +1,7 @@
 import { requireAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { connectToDatabase } from '@/lib/db';
 import { Group, Message, TeamMember, User, Notification } from '@/lib/models';
+import { isManagerOrAbove } from '@/lib/roles';
 import { createClient } from '@supabase/supabase-js';
 import { sendMentionEmail } from '@/lib/email';
 import { NextRequest, NextResponse } from 'next/server';
@@ -75,7 +76,7 @@ export async function POST(
 
     const { group, member } = await resolveGroupAccess(groupId, user.id);
 
-    if (group.type === 'announcement' && !['admin', 'manager'].includes(member.role)) {
+    if (group.type === 'announcement' && !isManagerOrAbove(member.role, member.job_title)) {
       throw new ApiError(403, 'Only admins/managers can post in announcement channels');
     }
 

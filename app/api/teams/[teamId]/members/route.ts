@@ -1,6 +1,7 @@
 import { requireAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { connectToDatabase } from '@/lib/db';
 import { TeamMember, TeamInvite, User } from '@/lib/models';
+import { isManagerOrAbove } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { sendInviteEmail } from '@/lib/email';
@@ -13,23 +14,18 @@ const inviteSchema = z.object({
 });
 
 /** Check if the requesting user has permission to invite new members.
- *  Permission: system role = 'admin' OR job_title contains 'CEO' or 'CTO' */
+ *  Permission: TeamMember.role is 'admin' or 'manager', OR job title indicates management */
 async function assertCanInvite(userId: string, teamId: string) {
   const member = await TeamMember.findOne({ team_id: teamId, user_id: userId });
   if (!member) throw new ApiError(403, 'Not a member of this team');
 
   const userDoc = await User.findOne({ id: userId }).select('job_title').lean() as any;
-  const jobTitle: string = (member.job_title || userDoc?.job_title || '').toLowerCase();
+  const jobTitle: string = member.job_title || userDoc?.job_title || '';
 
-  const isPrivileged =
-    member.role === 'admin' ||
-    jobTitle.includes('ceo') ||
-    jobTitle.includes('cto');
-
-  if (!isPrivileged) {
+  if (!isManagerOrAbove(member.role, jobTitle)) {
     throw new ApiError(
       403,
-      'Only admins, CEOs, and CTOs can invite new members'
+      'Only admins, managers, CEOs, CTOs, and HR Managers can invite new members'
     );
   }
 

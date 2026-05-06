@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { isManagerOrAbove, isManagerJobTitle } from '@/lib/client-roles';
 
 interface Member {
   user_id: string;
@@ -62,9 +63,7 @@ export default function MembersPage() {
   const [teamId, setTeamId] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
 
-  const canInvite =
-    user?.role === 'admin' ||
-    ['ceo', 'cto'].some((t) => user?.job_title?.toLowerCase().includes(t));
+  const canInvite = isManagerOrAbove(user);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -207,18 +206,27 @@ export default function MembersPage() {
                   )}
 
                   {/* Role badge */}
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <Shield className="w-3 h-3 flex-shrink-0" style={{ color: ROLE_COLORS[member.role] }} />
-                    <span
-                      className="text-[11px] font-bold capitalize px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: `${ROLE_COLORS[member.role]}20`,
-                        color: ROLE_COLORS[member.role],
-                      }}
-                    >
-                      {member.role}
-                    </span>
-                  </div>
+                  {(() => {
+                    const effectiveRole = (member.role === 'admin' || member.role === 'manager')
+                      ? member.role
+                      : isManagerJobTitle(member.job_title || member.user?.job_title)
+                        ? 'manager'
+                        : 'member';
+                    return (
+                      <div className="flex items-center gap-1.5 mb-4">
+                        <Shield className="w-3 h-3 flex-shrink-0" style={{ color: ROLE_COLORS[effectiveRole] }} />
+                        <span
+                          className="text-[11px] font-bold capitalize px-2 py-0.5 rounded-full"
+                          style={{
+                            backgroundColor: `${ROLE_COLORS[effectiveRole]}20`,
+                            color: ROLE_COLORS[effectiveRole],
+                          }}
+                        >
+                          {effectiveRole}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Actions */}
                   {!isMe && (
