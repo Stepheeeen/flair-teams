@@ -133,7 +133,7 @@ export async function sendUnreadMessagesEmail({
       title: `You missed some messages, <strong>${escapeHtml(userName)}</strong>`,
       body: `You have <strong>${count}</strong> unread message${count > 1 ? 's' : ''} waiting for you in <strong>${escapeHtml(source)}</strong>.<br/><br/>Jump back in to see what your team is discussing.`,
       ctaText: 'Read Messages',
-      ctaUrl: url,
+      ctaUrl: url.startsWith('http') ? url : `${APP_URL}${url.startsWith('/') ? '' : '/'}${url}`,
     }),
   });
 }

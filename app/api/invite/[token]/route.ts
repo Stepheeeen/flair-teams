@@ -99,8 +99,11 @@ export async function POST(
         id: supabaseUser.id,
         email: supabaseUser.email,
         name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0],
-        role: 'member',
+        role: invite.role || 'member',
       });
+    } else if (invite.role === 'manager' && user.role !== 'admin') {
+      await User.updateOne({ id: user.id }, { role: 'manager' });
+      user.role = 'manager';
     }
 
     // Check if already a member

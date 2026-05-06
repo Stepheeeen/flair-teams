@@ -208,6 +208,57 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ))}
+                <div className="pt-4 mt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-sm">Web Push Notifications</p>
+                      <p className="text-xs text-muted-foreground">Receive notifications even when the app is closed</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                          toast.error('Push notifications are not supported in this browser.');
+                          return;
+                        }
+                        const perm = await Notification.requestPermission();
+                        if (perm === 'granted') {
+                          const registration = await navigator.serviceWorker.ready;
+                          const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                          if (!vapidPublicKey) {
+                            toast.error('VAPID public key not configured.');
+                            return;
+                          }
+                          let subscription = await registration.pushManager.getSubscription();
+                          if (!subscription) {
+                            const padding = '='.repeat((4 - vapidPublicKey.length % 4) % 4);
+                            const base64 = (vapidPublicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
+                            const rawData = window.atob(base64);
+                            const outputArray = new Uint8Array(rawData.length);
+                            for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+                            subscription = await registration.pushManager.subscribe({
+                              userVisibleOnly: true,
+                              applicationServerKey: outputArray,
+                            });
+                          }
+                          await fetch('/api/push/subscribe', {
+                            method: 'POST',
+                            headers: authHeaders(),
+                            body: JSON.stringify(subscription),
+                          });
+                          toast.success('Push notifications enabled!');
+                          // Send a test notification
+                          new Notification('Notifications enabled!', { body: 'You will now receive updates.', icon: '/logo.png' });
+                        } else {
+                          toast.error('Permission denied for notifications.');
+                        }
+                      }}
+                    >
+                      Enable Push
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
