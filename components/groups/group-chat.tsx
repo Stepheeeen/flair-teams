@@ -19,6 +19,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { ManageChannelDialog } from './manage-channel-dialog';
+import { isManagerOrAbove } from '@/lib/client-roles';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Attachment {
@@ -494,7 +495,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   };
 
   const isAnnouncement = channelInfo.type === 'announcement';
-  const canWrite = !isAnnouncement || user?.role === 'admin' || user?.role === 'manager';
+  const canWrite = !isAnnouncement || isManagerOrAbove(user);
   const grouped = groupByDate(messages);
 
   return (
@@ -520,7 +521,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
               style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>Announcement</span>
           )}
           {headerActions}
-          {(user?.role === 'admin' || user?.role === 'manager') && (
+          {isManagerOrAbove(user) && (
             <Button
               size="icon"
               variant="ghost"

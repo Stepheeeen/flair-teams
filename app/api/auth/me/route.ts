@@ -1,6 +1,7 @@
 import { verifyAuth } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db';
-import { User } from '@/lib/models';
+import { User, TeamMember } from '@/lib/models';
+import { isManagerJobTitle } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -19,12 +20,40 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // --- SYNC LOGIC: Ensure User profile is in sync with TeamMember status ---
+    // If user's global role is 'member', check if they are a manager/CEO/etc in any team
+    const memberships = await TeamMember.find({ user_id: user.id }).lean() as any[];
+    let highestRole = userRecord.role;
+    let bestJobTitle = userRecord.job_title || '';
+
+    for (const m of memberships) {
+      if (m.role === 'admin') highestRole = 'admin';
+      if (m.role === 'manager' && highestRole !== 'admin') highestRole = 'manager';
+      if (isManagerJobTitle(m.job_title)) {
+        if (highestRole !== 'admin') highestRole = 'manager';
+        if (!bestJobTitle || isManagerJobTitle(m.job_title)) bestJobTitle = m.job_title;
+      }
+      if (m.job_title && !bestJobTitle) bestJobTitle = m.job_title;
+    }
+
+    // If we found a better role or job title, update the User record
+    if (highestRole !== userRecord.role || (bestJobTitle && bestJobTitle !== userRecord.job_title)) {
+      await User.updateOne(
+        { id: user.id },
+        { $set: { role: highestRole, job_title: bestJobTitle } }
+      );
+      userRecord.role = highestRole;
+      userRecord.job_title = bestJobTitle;
+    }
+    // -------------------------------------------------------------------------
+
     return NextResponse.json({
       user: {
         id: userRecord.id,
         email: userRecord.email,
         name: userRecord.name,
         role: userRecord.role,
+        job_title: userRecord.job_title || '',
         avatar_url: userRecord.avatar_url,
       },
     });
