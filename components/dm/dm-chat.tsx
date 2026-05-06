@@ -286,7 +286,7 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
 
                 return (
                   <div key={msg._id}
-                    className={`flex items-start gap-3 px-2 py-0.5 rounded-lg hover:bg-muted/30 ${consec ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : ''}`}>
+                    className={`group flex items-start gap-3 px-2 py-0.5 rounded-lg hover:bg-muted/30 ${consec ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : ''}`}>
                     <div className={`w-8 flex-shrink-0 ${consec ? 'invisible' : ''}`}>
                       <Avatar name={isOwn ? user!.name : displayName} src={isOwn ? user?.avatar_url : otherUser?.avatar_url} token={token} />
                     </div>
