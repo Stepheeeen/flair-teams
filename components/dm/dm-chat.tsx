@@ -316,47 +316,48 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                           </p>
                           {msg.edited && <span className="text-[10px] ml-2 opacity-70 block text-right">(edited)</span>}
                         </div>
-                        
-                        {/* Actions (visible on hover or on mobile) */}
-                        <div className="md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity flex items-center gap-1 self-center ml-1">
-                          {!msg.deleted && (
-                            <button
-                              onClick={() => {
-                                setReplyTo(msg);
-                                inputRef.current?.focus();
-                              }}
-                              className="p-1 text-muted-foreground hover:text-foreground"
-                              title="Reply"
-                            >
-                              <Reply className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {isOwn && !msg.deleted && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="p-1 text-muted-foreground hover:text-foreground" title="More">
-                                  <MoreHorizontal className="w-3.5 h-3.5" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => { setEditingMessage(msg); setInput(msg.content); setReplyTo(null); inputRef.current?.focus(); }}>
-                                  <Edit2 className="w-4 h-4 mr-2" />
-                                  Edit message
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={async () => {
-                                  try {
-                                    const res = await fetcher(`/api/dm/messages/${msg._id}`, { method: 'DELETE' });
-                                    if (!res.ok) throw new Error();
-                                    setMessages(prev => prev.map(m => m._id === msg._id ? { ...m, deleted: true, content: 'This message was deleted', reply_to: null } : m));
-                                  } catch { toast.error('Failed to delete message'); }
-                                }} className="text-destructive focus:text-destructive">
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete message
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
+                      </div>
+                      
+                      {/* Actions (visible on hover or on mobile) */}
+                      <div className={`md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity flex items-center gap-1 self-center ${isOwn ? 'mr-1' : 'ml-1'}`}>
+                        {!msg.deleted && (
+                          <button
+                            onClick={() => {
+                              setReplyTo(msg);
+                              inputRef.current?.focus();
+                            }}
+                            className="p-1 text-muted-foreground hover:text-foreground"
+                            title="Reply"
+                          >
+                            <Reply className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {isOwn && !msg.deleted && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1 text-muted-foreground hover:text-foreground" title="More">
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isOwn ? "start" : "end"}>
+                              <DropdownMenuItem onClick={() => { setEditingMessage(msg); setInput(msg.content); setReplyTo(null); inputRef.current?.focus(); }}>
+                                <Edit2 className="w-4 h-4 mr-2" />
+                                Edit message
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={async () => {
+                                if (!confirm('Are you sure you want to delete this message?')) return;
+                                try {
+                                  const res = await fetcher(`/api/dm/messages/${msg._id}`, { method: 'DELETE' });
+                                  if (!res.ok) throw new Error();
+                                  setMessages(prev => prev.map(m => m._id === msg._id ? { ...m, deleted: true, content: 'This message was deleted', reply_to: null } : m));
+                                } catch { toast.error('Failed to delete message'); }
+                              }} className="text-destructive focus:text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete message
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                   </div>
                 );

@@ -172,6 +172,7 @@ export const directMessageSchema = new Schema(
     content: { type: String, required: true },
     type: { type: String, enum: ['text', 'file'], default: 'text' },
     read: { type: Boolean, default: false },
+    edited: { type: Boolean, default: false },
     deleted: { type: Boolean, default: false },
     reply_to: { type: Types.ObjectId, ref: 'DirectMessage', default: null },
     attachment: { url: String, name: String, size: Number, mime_type: String, bucket_path: String },
