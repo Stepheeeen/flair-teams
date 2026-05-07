@@ -31,36 +31,19 @@ export function PushManager() {
 
         const registration = await navigator.serviceWorker.register('/sw.js');
 
-        // Check if permission is already granted, else request it
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
-
-        // Ensure we have a public key
-        let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidPublicKey) {
-          const vapidRes = await fetch('/api/push/vapid');
-          const vapidData = await vapidRes.json();
-          vapidPublicKey = vapidData.publicKey;
-        }
-
-        if (!vapidPublicKey) return;
-
-        // Get existing subscription or create a new one
+        // We only want to SYNC existing subscriptions, not create new ones.
+        // The user must enable push independently on each device via the Settings page.
         let subscription = await registration.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        
+        if (subscription) {
+          // Send to backend to ensure it's still registered
+          await fetcher('/api/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify(subscription),
           });
         }
-
-        // Send to backend
-        await fetcher('/api/push/subscribe', {
-          method: 'POST',
-          body: JSON.stringify(subscription),
-        });
       } catch (error) {
-        console.error('Failed to set up push notifications:', error);
+        console.error('Failed to sync push notifications:', error);
       }
     };
 
