@@ -9,6 +9,8 @@ import { Loader2, Save, User, Camera, Bell, Shield, PaintBucket } from 'lucide-r
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { isManagerOrAbove } from '@/lib/client-roles';
+import { Switch } from '@/components/ui/switch';
+import { useEffect, useCallback } from 'react';
 
 export default function ProfilePage() {
   const { user, authHeaders, token } = useAuth();
@@ -18,6 +20,8 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
+  const [isPushEnabled, setIsPushEnabled] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -79,6 +83,103 @@ export default function ProfilePage() {
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const checkPushStatus = useCallback(async () => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setIsPushEnabled(!!subscription);
+    } catch (err) {
+      console.error('Error checking push status:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      checkPushStatus();
+    }
+  }, [activeTab, checkPushStatus]);
+
+  const togglePush = async (checked: boolean) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error('Push notifications are not supported in this browser.');
+      return;
+    }
+
+    setIsPushLoading(true);
+    try {
+      if (checked) {
+        // Enable Push
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          toast.error('Permission denied for notifications.');
+          setIsPushEnabled(false);
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Fetch VAPID key
+        let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          const vapidRes = await fetch('/api/push/vapid');
+          const vapidData = await vapidRes.json();
+          vapidPublicKey = vapidData.publicKey;
+        }
+        
+        if (!vapidPublicKey) {
+          toast.error('VAPID public key not configured on server.');
+          setIsPushEnabled(false);
+          return;
+        }
+
+        // Helper to convert base64
+        const padding = '='.repeat((4 - vapidPublicKey.length % 4) % 4);
+        const base64 = (vapidPublicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: outputArray,
+        });
+
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(subscription),
+        });
+
+        setIsPushEnabled(true);
+        toast.success('Push notifications enabled!');
+        new Notification('Notifications enabled!', { body: 'You will now receive updates.', icon: '/logo.png' });
+      } else {
+        // Disable Push
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        
+        if (subscription) {
+          await fetch('/api/push/subscribe', {
+            method: 'DELETE',
+            headers: authHeaders(),
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          });
+          await subscription.unsubscribe();
+        }
+        
+        setIsPushEnabled(false);
+        toast.success('Push notifications disabled.');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update push settings');
+      // Revert state on error
+      checkPushStatus();
+    } finally {
+      setIsPushLoading(false);
     }
   };
 
@@ -194,19 +295,17 @@ export default function ProfilePage() {
                 <CardDescription>Choose what you want to be notified about</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {[
-                  { label: 'Direct Messages', desc: 'Get notified when someone sends you a message' },
-                  { label: 'Mentions', desc: 'Get notified when someone @mentions you' },
-                  { label: 'Channel Updates', desc: 'Get notified about all channel activities' }
+                 {[
+                  { label: 'Direct Messages', desc: 'Get notified when someone sends you a message', defaultChecked: true },
+                  { label: 'Mentions', desc: 'Get notified when someone @mentions you', defaultChecked: true },
+                  { label: 'Channel Updates', desc: 'Get notified about all channel activities', defaultChecked: false }
                 ].map((item, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                     <div>
                       <p className="font-semibold text-sm">{item.label}</p>
                       <p className="text-xs text-muted-foreground">{item.desc}</p>
                     </div>
-                    <div className={`w-10 h-5 rounded-full flex items-center px-0.5 cursor-pointer ${i < 2 ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
-                      <div className={`w-4 h-4 rounded-full bg-background transition-transform ${i < 2 ? 'translate-x-5' : ''}`} />
-                    </div>
+                    <Switch defaultChecked={item.defaultChecked} />
                   </div>
                 ))}
                 <div className="pt-4 mt-2 border-t border-border/50">
@@ -215,57 +314,14 @@ export default function ProfilePage() {
                       <p className="font-semibold text-sm">Web Push Notifications</p>
                       <p className="text-xs text-muted-foreground">Receive notifications even when the app is closed</p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={async () => {
-                        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                          toast.error('Push notifications are not supported in this browser.');
-                          return;
-                        }
-                        const perm = await Notification.requestPermission();
-                        if (perm === 'granted') {
-                          const registration = await navigator.serviceWorker.ready;
-                          
-                          // Fetch dynamically to avoid issues with un-restarted dev servers
-                          let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                          if (!vapidPublicKey) {
-                            const vapidRes = await fetch('/api/push/vapid');
-                            const vapidData = await vapidRes.json();
-                            vapidPublicKey = vapidData.publicKey;
-                          }
-                          
-                          if (!vapidPublicKey) {
-                            toast.error('VAPID public key not configured on server.');
-                            return;
-                          }
-                          let subscription = await registration.pushManager.getSubscription();
-                          if (!subscription) {
-                            const padding = '='.repeat((4 - vapidPublicKey.length % 4) % 4);
-                            const base64 = (vapidPublicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
-                            const rawData = window.atob(base64);
-                            const outputArray = new Uint8Array(rawData.length);
-                            for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-                            subscription = await registration.pushManager.subscribe({
-                              userVisibleOnly: true,
-                              applicationServerKey: outputArray,
-                            });
-                          }
-                          await fetch('/api/push/subscribe', {
-                            method: 'POST',
-                            headers: authHeaders(),
-                            body: JSON.stringify(subscription),
-                          });
-                          toast.success('Push notifications enabled!');
-                          // Send a test notification
-                          new Notification('Notifications enabled!', { body: 'You will now receive updates.', icon: '/logo.png' });
-                        } else {
-                          toast.error('Permission denied for notifications.');
-                        }
-                      }}
-                    >
-                      Enable Push
-                    </Button>
+                     <div className="flex items-center gap-3">
+                      {isPushLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                      <Switch 
+                        checked={isPushEnabled} 
+                        onCheckedChange={togglePush}
+                        disabled={isPushLoading}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardContent>
