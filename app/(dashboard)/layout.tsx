@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
+import { Header } from '@/components/dashboard/header';
 import Image from 'next/image';
 
 function Preloader() {
@@ -53,7 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     >
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-hidden bg-background overscroll-none">
+        <Header />
+        <main className="flex-1 flex flex-col overflow-hidden bg-background overscroll-none pb-16 lg:pb-0">
           {children}
         </main>
       </div>
