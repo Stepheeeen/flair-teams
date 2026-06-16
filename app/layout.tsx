@@ -5,6 +5,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { PushManager } from '@/components/push-manager';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from 'sonner';
+import { VisualViewportManager } from '@/components/visual-viewport-manager';
 import './globals.css';
 
 const inter = Inter({
@@ -83,6 +84,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <PushManager />
+            <VisualViewportManager />
             {children}
           </AuthProvider>
           <Toaster richColors position="bottom-right" />

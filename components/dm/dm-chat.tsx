@@ -159,6 +159,18 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handleResize = () => {
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    };
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, []);
+
   const broadcastTyping = () => {
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: user?.id } });
     if (typingTimeout.current) clearTimeout(typingTimeout.current);

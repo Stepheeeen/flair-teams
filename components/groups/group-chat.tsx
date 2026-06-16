@@ -301,6 +301,18 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handleResize = () => {
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    };
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, []);
   /* ── Typing broadcast ──────────────────────────────────────────────────── */
   const broadcastTyping = useCallback((isTyping: boolean) => {
     const ch = realtimeChannelRef.current;
