@@ -91,6 +91,22 @@ export async function DELETE(
       throw new ApiError(403, 'You do not have permission to delete this message');
     }
 
+    // Delete attachment from Supabase Storage if it exists
+    if (message.attachment && message.attachment.bucket_path) {
+      try {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          { auth: { persistSession: false } }
+        );
+        await supabase.storage
+          .from('channel-files')
+          .remove([message.attachment.bucket_path]);
+      } catch (storageErr) {
+        console.error('[DELETE MESSAGE ATTACHMENT ERROR]:', storageErr);
+      }
+    }
+
     message.deleted = true;
     message.content = 'This message was deleted';
     message.attachment = undefined;

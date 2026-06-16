@@ -84,6 +84,42 @@ export async function DELETE(
       );
     }
 
+    // Collect and delete all attachment files from Supabase Storage for this member's messages & DMs
+    try {
+      const channelAttachments = await Message.find({
+        sender_id: userId,
+        'attachment.bucket_path': { $exists: true, $ne: null }
+      }).select('attachment.bucket_path').lean() as any[];
+
+      const dmAttachments = await DirectMessage.find({
+        $or: [
+          { sender_id: userId },
+          { conversation_id: { $regex: userId } }
+        ],
+        'attachment.bucket_path': { $exists: true, $ne: null }
+      }).select('attachment.bucket_path').lean() as any[];
+
+      const pathsToDelete: string[] = [];
+      channelAttachments.forEach(msg => {
+        if (msg.attachment?.bucket_path) pathsToDelete.push(msg.attachment.bucket_path);
+      });
+      dmAttachments.forEach(msg => {
+        if (msg.attachment?.bucket_path) pathsToDelete.push(msg.attachment.bucket_path);
+      });
+
+      if (pathsToDelete.length > 0) {
+        const supabase = await createSupabaseServerClient();
+        const { error: storageErr } = await supabase.storage
+          .from('channel-files')
+          .remove(pathsToDelete);
+        if (storageErr) {
+          console.error(`[DELETE MEMBER] Supabase storage remove error:`, storageErr);
+        }
+      }
+    } catch (storageErr) {
+      console.error('[DELETE MEMBER] Storage cleanup error:', storageErr);
+    }
+
     // Delete user from Supabase Auth
     try {
       const supabase = await createSupabaseServerClient();

@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 function validate(name: string, email: string, password: string) {
   const e: Record<string, string> = {};

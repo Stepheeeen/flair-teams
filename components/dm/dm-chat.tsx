@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
-import { Send, Loader2, ArrowLeft, Reply, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, Reply, MoreHorizontal, Edit2, Trash2, Paperclip } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,8 @@ import {
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { uploadFile, Attachment } from '@/lib/upload-client';
+import { AttachmentRenderer } from '@/components/chat/attachment-renderer';
 
 interface DMMessage {
   _id: string;
@@ -22,6 +24,8 @@ interface DMMessage {
   sender_id: string;
   sender_name: string;
   content: string;
+  type?: 'text' | 'file';
+  attachment?: Attachment;
   createdAt: string;
   read: boolean;
   reply_to?: DMMessage | null;
@@ -85,17 +89,19 @@ function Avatar({ name, src, token }: { name: string; src?: string; token?: stri
 }
 
 export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatProps) {
-  const { user, fetcher, token } = useAuth();
+  const { user, fetcher, token, authHeaders } = useAuth();
   const isMobile = useIsMobile();
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [typingUsers, setTypingUsers] = useState(false);
   const [replyTo, setReplyTo] = useState<DMMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<DMMessage | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<any>(null);
 
@@ -153,15 +159,13 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Removed JS-based keyboard scroll anchoring; CSS overflow-anchor handles it natively.
-
   const broadcastTyping = () => {
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: user?.id } });
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
   };
 
-  const send = async () => {
-    const content = input.trim();
+  const send = async (overrideContent?: string, attachment?: Attachment) => {
+    const content = overrideContent || input.trim();
     if (!content || isSending) return;
 
     setIsSending(true);
@@ -196,32 +200,61 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
       sender_id: user!.id,
       sender_name: user!.name,
       content,
+      type: attachment ? 'file' : 'text',
+      attachment,
       createdAt: new Date().toISOString(),
       read: false,
       reply_to: replyTo,
     };
     setMessages((p) => [...p, opt]);
-    setInput('');
+    if (!overrideContent) setInput('');
     setReplyTo(null);
 
     try {
       const res = await fetcher(apiUrl, {
         method: 'POST',
-        body: JSON.stringify({ content, reply_to: replyTo?._id }),
+        body: JSON.stringify({
+          content,
+          reply_to: replyTo?._id,
+          type: attachment ? 'file' : 'text',
+          attachment,
+        }),
       });
       if (!res.ok) {
         setMessages((p) => p.filter((m) => m._id !== optId));
-        setInput(content);
+        if (!overrideContent) setInput(content);
         return;
       }
       const data = await res.json();
       setMessages((p) => p.map((m) => m._id === optId ? data.message : m));
     } catch {
       setMessages((p) => p.filter((m) => m._id !== optId));
-      setInput(content);
+      if (!overrideContent) setInput(content);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX = 25 * 1024 * 1024;
+    if (file.size > MAX) {
+      toast.error('File too large (max 25 MB)');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const attachment = await uploadFile(file, 'dm', otherUserId, authHeaders);
+      await send(file.name, attachment);
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -253,8 +286,8 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
         </div>
       </div>
 
-      {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 lg:pb-4 scroll-container">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 scroll-container">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -308,16 +341,20 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
                           </div>
                         )}
 
-                        <div 
-                          className={`py-1.5 px-3 rounded-2xl max-w-[85%] relative group transition-all ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'} ${msg.deleted ? 'opacity-50 italic' : ''}`}
-                        >
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                            {msg.content}
-                          </p>
-                          {msg.edited && <span className="text-[10px] ml-2 opacity-70 block text-right">(edited)</span>}
-                        </div>
+                        {msg.type === 'file' && msg.attachment ? (
+                          <AttachmentRenderer attachment={msg.attachment} token={token} />
+                        ) : (
+                          <div
+                            className={`py-1.5 px-3 rounded-2xl max-w-[85%] relative group transition-all ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'} ${msg.deleted ? 'opacity-50 italic' : ''}`}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              {msg.content}
+                            </p>
+                            {msg.edited && <span className="text-[10px] ml-2 opacity-70 block text-right">(edited)</span>}
+                          </div>
+                        )}
                       </div>
-                      
+
                       {/* Actions (visible on hover or on mobile) */}
                       <div className={`md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity flex items-center gap-1 self-center ${isOwn ? 'mr-1' : 'ml-1'}`}>
                         {!msg.deleted && (
@@ -379,12 +416,9 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
         <div ref={bottomRef} />
       </div>
 
-      {/* Input
-          Mobile: position:fixed just above the nav bar — rises naturally with the iOS keyboard (WhatsApp pattern).
-          Desktop (lg): normal static flow.
-      */}
+      {/* Input */}
       <div
-        className="chat-input-wrapper border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
+        className="border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm flex-shrink-0"
       >
         {/* Reply/Edit preview */}
         {(replyTo || editingMessage) && (
@@ -402,6 +436,29 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
         )}
 
         <div className="flex items-end gap-2">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileSelect}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.webp,.gif,.zip"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-9 h-9 rounded-xl flex-shrink-0 text-muted-foreground hover:text-foreground mb-[6px]"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isSending}
+            title="Attach file"
+          >
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Paperclip className="w-4 h-4" />
+            )}
+          </Button>
+
           <textarea
             ref={inputRef}
             value={input}
@@ -409,12 +466,12 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
             onKeyDown={onKeyDown}
             placeholder={`Message ${displayName}…`}
             rows={1}
-            disabled={isSending}
+            disabled={isSending || isUploading}
             className="flex-1 resize-none bg-muted/50 border border-border rounded-xl px-4 py-3 text-[16px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-40"
           />
           <Button
-            onClick={send}
-            disabled={!input.trim() || isSending}
+            onClick={() => send()}
+            disabled={(!input.trim() && !isUploading) || isSending}
             size="icon"
             className="h-9 w-9 rounded-xl flex-shrink-0 mb-[6px]"
             style={{ background: input.trim() ? 'linear-gradient(135deg,#FFC078,#DA9646)' : undefined, color: input.trim() ? '#1B1C1B' : undefined }}
@@ -426,3 +483,4 @@ export function DirectMessageChat({ otherUserId, otherUser }: DirectMessageChatP
     </div>
   );
 }
+

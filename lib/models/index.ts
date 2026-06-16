@@ -157,6 +157,11 @@ export const messageSchema = new Schema(
     reply_to: { type: Types.ObjectId, ref: 'Message', default: null },
     attachment: { url: String, name: String, size: Number, mime_type: String, bucket_path: String },
     mentions: [{ type: String }],
+    reactions: [{
+      emoji: { type: String, required: true },
+      user_id: { type: String, required: true },
+      user_name: { type: String, required: true }
+    }],
   },
   { timestamps: true }
 );

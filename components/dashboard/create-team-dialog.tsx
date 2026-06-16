@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 interface CreateTeamDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onTeamCreated: (team: any) => void;
+  onTeamCreated?: (team: any) => void;
 }
 
 export function CreateTeamDialog({ open, onOpenChange, onTeamCreated }: CreateTeamDialogProps) {
@@ -45,7 +45,10 @@ export function CreateTeamDialog({ open, onOpenChange, onTeamCreated }: CreateTe
       const data = await response.json();
       setName('');
       setDescription('');
-      onTeamCreated(data.team);
+      if (onTeamCreated) {
+        onTeamCreated(data.team);
+      }
+      onOpenChange(false);
     } catch (err: any) {
       setError(err.message);
     } finally {

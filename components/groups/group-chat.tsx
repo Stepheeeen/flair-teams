@@ -7,8 +7,9 @@ import { getSupabaseClient } from '@/lib/supabase-browser';
 import { Button } from '@/components/ui/button';
 import {
   Send, Reply, Hash, Users, Lock, Megaphone, ChevronRight,
-  Loader2, Paperclip, File as FileIcon, X, Download, Settings, ArrowLeft, MoreHorizontal, Edit2, Trash2
+  Loader2, Paperclip, File as FileIcon, X, Download, Settings, ArrowLeft, MoreHorizontal, Edit2, Trash2, Smile
 } from 'lucide-react';
+import { AttachmentRenderer } from '../chat/attachment-renderer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,12 @@ interface Attachment {
   bucket_path: string;
 }
 
+interface Reaction {
+  emoji: string;
+  user_id: string;
+  user_name: string;
+}
+
 interface Message {
   _id: string;
   sender_id: string;
@@ -43,6 +50,7 @@ interface Message {
   mentions?: string[];
   edited?: boolean;
   deleted?: boolean;
+  reactions?: Reaction[];
 }
 
 interface ChannelInfo {
@@ -140,28 +148,41 @@ function Avatar({ name, src, token }: { name: string; src?: string; token?: stri
 function SwipeableMessage({ children, onSwipe, isOwn }: { children: React.ReactNode, onSwipe: () => void, isOwn: boolean }) {
   const [offset, setOffset] = useState(0);
   const startX = useRef(0);
+  const startY = useRef(0);
   const isDragging = useRef(false);
+  // null = undecided, true = horizontal swipe, false = vertical scroll
+  const direction = useRef<boolean | null>(null);
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
     isDragging.current = true;
+    direction.current = null;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
     if (!isDragging.current) return;
-    const diff = e.touches[0].clientX - startX.current;
-    // Allow swipe right to reply (up to 60px)
-    if (diff > 0 && diff < 60) {
-      setOffset(diff);
+    const diffX = e.touches[0].clientX - startX.current;
+    const diffY = e.touches[0].clientY - startY.current;
+
+    // Determine direction once we have enough movement (5px threshold)
+    if (direction.current === null && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
+      direction.current = Math.abs(diffX) > Math.abs(diffY);
+    }
+
+    // Only animate if clearly a horizontal rightward swipe
+    if (direction.current === true && diffX > 0 && diffX < 60) {
+      setOffset(diffX);
     }
   };
 
   const onTouchEnd = () => {
     isDragging.current = false;
-    if (offset > 40) {
+    if (direction.current === true && offset > 40) {
       onSwipe();
     }
     setOffset(0);
+    direction.current = null;
   };
 
   return (
@@ -169,7 +190,13 @@ function SwipeableMessage({ children, onSwipe, isOwn }: { children: React.ReactN
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      style={{ transform: `translateX(${offset}px)`, transition: isDragging.current ? 'none' : 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)' }}
+      style={{
+        transform: `translateX(${offset}px)`,
+        transition: isDragging.current ? 'none' : 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)',
+        // pan-y: browser handles vertical scroll natively but NOT horizontal pan,
+        // so rightward swipe animates the message without scrolling the page.
+        touchAction: 'pan-y',
+      }}
       className="relative flex items-center w-full"
     >
       <div 
@@ -324,6 +351,10 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
       setMessages((prev) => prev.map((m) => m._id === payload._id ? { ...m, deleted: true, content: payload.content, attachment: undefined } : m));
     });
 
+    channel.on('broadcast', { event: 'message_reactions_updated' }, ({ payload }) => {
+      setMessages((prev) => prev.map((m) => m._id === payload._id ? { ...m, reactions: payload.reactions } : m));
+    });
+
     channel.subscribe();
     realtimeChannelRef.current = channel;
 
@@ -464,6 +495,47 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
     }
   };
 
+  const toggleReaction = async (messageId: string, emoji: string) => {
+    // Optimistic update
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m._id !== messageId) return m;
+        const reactions = m.reactions ? [...m.reactions] : [];
+        const existingIdx = reactions.findIndex((r) => r.emoji === emoji && r.user_id === user?.id);
+        if (existingIdx > -1) {
+          reactions.splice(existingIdx, 1);
+        } else {
+          reactions.push({
+            emoji,
+            user_id: user!.id,
+            user_name: user!.name,
+          });
+        }
+        return { ...m, reactions };
+      })
+    );
+
+    try {
+      const res = await fetch(`/api/messages/${messageId}/reactions`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ emoji }),
+      });
+      if (!res.ok) {
+        loadMessages();
+        toast.error('Failed to toggle reaction');
+      } else {
+        const data = await res.json();
+        setMessages((prev) =>
+          prev.map((m) => (m._id === messageId ? { ...m, reactions: data.reactions } : m))
+        );
+      }
+    } catch {
+      loadMessages();
+      toast.error('Network error');
+    }
+  };
+
   /* ── File upload ───────────────────────────────────────────────────────── */
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -535,8 +607,8 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         </div>
       </div>
 
-      {/* Messages — bottom padding accounts for fixed input+nav on mobile */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 lg:pb-4 scroll-container">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 scroll-container">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -593,35 +665,67 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                         )}
 
                         {msg.type === 'file' && msg.attachment ? (
-                          msg.attachment.mime_type?.startsWith('image/') ? (
-                            <div className="mt-1 relative rounded-xl overflow-hidden border border-border inline-block max-w-[280px] sm:max-w-sm">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={`/api/file?path=${encodeURIComponent(msg.attachment.bucket_path || '')}&token=${token || ''}`} alt={msg.attachment.name} className="w-full h-auto object-cover max-h-60" />
-                              <a href={`/api/file?path=${encodeURIComponent(msg.attachment.bucket_path || '')}&token=${token || ''}`} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded text-white backdrop-blur-sm transition-colors opacity-0 group-hover/file:opacity-100 group-hover:opacity-100">
-                                <Download className="w-4 h-4" />
-                              </a>
-                            </div>
-                          ) : (
-                            <a href={`/api/file?path=${encodeURIComponent(msg.attachment.bucket_path || '')}&token=${token || ''}`} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/40 hover:bg-muted transition-colors group/file mt-1 max-w-full">
-                              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FFC078' }}>
-                                <FileIcon className="w-4 h-4 text-[#1B1C1B]" />
-                              </div>
-                              <div className="min-w-0 overflow-hidden">
-                                <p className="text-sm font-semibold truncate">{msg.attachment.name}</p>
-                                <p className="text-xs text-muted-foreground">{formatBytes(msg.attachment.size)}</p>
-                              </div>
-                              <Download className="w-4 h-4 text-muted-foreground group-hover/file:text-foreground ml-2 flex-shrink-0" />
-                            </a>
-                          )
+                          <AttachmentRenderer attachment={msg.attachment} token={token} />
                         ) : (
                           <div className={`py-1.5 px-3 rounded-2xl max-w-[85%] ${isOwn ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'} ${msg.deleted ? 'opacity-50 italic' : ''}`}>
                             <MessageContent content={msg.content} currentUserId={user?.id || ''} mentions={msg.mentions} />
                             {msg.edited && <span className="text-[10px] ml-2 opacity-70">(edited)</span>}
                           </div>
                         )}
+
+                        {/* Message reactions list */}
+                        {msg.reactions && msg.reactions.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 max-w-[85%]">
+                            {Object.entries(
+                              msg.reactions.reduce((acc: Record<string, typeof msg.reactions>, r: any) => {
+                                if (!acc[r.emoji]) acc[r.emoji] = [];
+                                acc[r.emoji].push(r);
+                                return acc;
+                              }, {})
+                            ).map(([emoji, reacts]: [string, any]) => {
+                              const hasReacted = reacts.some((r: any) => r.user_id === user?.id);
+                              const usernames = reacts.map((r: any) => r.user_name).join(', ');
+
+                              return (
+                                <button
+                                  key={emoji}
+                                  onClick={() => toggleReaction(msg._id, emoji)}
+                                  title={usernames}
+                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border transition-all ${
+                                    hasReacted
+                                      ? 'bg-primary/15 border-primary/30 text-primary'
+                                      : 'bg-muted/40 border-border text-muted-foreground hover:border-border/80'
+                                  }`}
+                                >
+                                  <span>{emoji}</span>
+                                  <span className="text-[10px]">{reacts.length}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                       <div className="md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity flex items-center gap-1">
+                        {!msg.deleted && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1 text-muted-foreground hover:text-foreground" title="React">
+                                <Smile className="w-3.5 h-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="flex flex-row p-1 gap-1 min-w-0 bg-popover border border-border shadow-md rounded-lg z-30">
+                              {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
+                                <DropdownMenuItem
+                                  key={emoji}
+                                  onClick={() => toggleReaction(msg._id, emoji)}
+                                  className="p-1.5 hover:bg-muted rounded cursor-pointer text-base focus:bg-muted"
+                                >
+                                  {emoji}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                         {!msg.deleted && (
                           <button onClick={() => setReplyTo(msg)} className="p-1 text-muted-foreground hover:text-foreground" title="Reply">
                             <Reply className="w-3.5 h-3.5" />
@@ -675,13 +779,9 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         <div ref={bottomRef} />
       </div>
 
-      {/* Input area
-          Mobile: position:fixed just above the nav bar — rises naturally with the iOS keyboard (WhatsApp pattern).
-          Desktop (lg): normal static flow inside the flex column.
-      */}
       {canWrite ? (
         <div
-          className="chat-input-wrapper border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
+          className="border-t border-border px-4 py-3 bg-card/80 backdrop-blur-sm flex-shrink-0 relative"
         >
           {/* Reply/Edit preview */}
           {(replyTo || editingMessage) && (
@@ -698,7 +798,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
             </div>
           )}
 
-          {/* @mention suggestions — sits above the fixed input bar */}
+          {/* @mention suggestions — anchored above the input bar */}
           {showSuggestions && mentionSuggestions.length > 0 && (
             <div className="absolute bottom-full left-4 right-4 mb-1 z-10 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
               {mentionSuggestions.map((m) => (
@@ -747,7 +847,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         </div>
       ) : (
         <div
-          className="chat-input-wrapper border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm z-20 fixed left-0 right-0 bottom-16 lg:static lg:bottom-auto lg:flex-shrink-0"
+          className="border-t border-border px-4 py-3 text-center text-sm text-muted-foreground bg-card/80 backdrop-blur-sm flex-shrink-0"
         >
           <Megaphone className="w-4 h-4 inline mr-2" />
           Announcement channel — only admins and managers can post.

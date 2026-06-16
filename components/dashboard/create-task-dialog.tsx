@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,10 +13,10 @@ import {
 import { Input } from '@/components/ui/input';
 
 interface CreateTaskDialogProps {
-  projectId: string;
+  projectId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onTaskCreated: (task: any) => void;
+  onTaskCreated?: (task: any) => void;
 }
 
 export function CreateTaskDialog({
@@ -31,9 +31,31 @@ export function CreateTaskDialog({
   const [priority, setPriority] = useState('medium');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId || '');
+
+  useEffect(() => {
+    if (!projectId && open) {
+      fetch('/api/projects', { headers: authHeaders() })
+        .then((res) => res.json())
+        .then((data) => {
+          setProjects(data.projects || []);
+          if (data.projects && data.projects.length > 0) {
+            setSelectedProjectId(data.projects[0]._id);
+          }
+        })
+        .catch((err) => console.error('Failed to load projects:', err));
+    } else {
+      setSelectedProjectId(projectId || '');
+    }
+  }, [projectId, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedProjectId) {
+      setError('Please select a project');
+      return;
+    }
     setError('');
     setIsLoading(true);
 
@@ -45,7 +67,7 @@ export function CreateTaskDialog({
           title,
           description,
           priority,
-          project_id: projectId,
+          project_id: selectedProjectId,
           status: 'todo',
         }),
       });
@@ -59,7 +81,10 @@ export function CreateTaskDialog({
       setTitle('');
       setDescription('');
       setPriority('medium');
-      onTaskCreated(data.task);
+      if (onTaskCreated) {
+        onTaskCreated(data.task);
+      }
+      onOpenChange(false);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -78,6 +103,27 @@ export function CreateTaskDialog({
           {error && (
             <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
               {error}
+            </div>
+          )}
+
+          {!projectId && (
+            <div className="space-y-2">
+              <label htmlFor="task-project" className="text-sm font-medium">
+                Project
+              </label>
+              <select
+                id="task-project"
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                disabled={isLoading}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              >
+                <option value="" disabled>Select a project</option>
+                {projects.map((p) => (
+                  <option key={p._id} value={p._id}>{p.name}</option>
+                ))}
+              </select>
             </div>
           )}
 

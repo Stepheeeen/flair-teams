@@ -254,17 +254,14 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC078]/60;
   }
 
-  /* 
-   * CSS-based Keyboard Handling for PWAs:
-   * When an input/textarea is focused, the virtual keyboard pushes up the viewport.
-   * Hide the bottom nav natively without JS jitter, and drop the chat input to bottom-0.
+  /*
+   * CSS-based keyboard UX for PWAs:
+   * Hide the bottom nav when a text field is focused so the keyboard doesn't
+   * fight for space with the nav bar. The chat input is in-flow (flex column),
+   * so it automatically stays above the keyboard via `interactiveWidget: resizes-content`.
    */
   body:has(input:focus, textarea:focus) nav.bottom-app-bar {
     display: none !important;
-  }
-  
-  body:has(input:focus, textarea:focus) .chat-input-wrapper {
-    bottom: 0 !important;
   }
 
   /* Robust Scroll Anchoring */

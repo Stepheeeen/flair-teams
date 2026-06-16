@@ -6,7 +6,7 @@ import { z } from 'zod';
 const uploadSchema = z.object({
   filename: z.string().min(1),
   content_type: z.string().min(1),
-  channel_type: z.enum(['group', 'subgroup', 'profile']),
+  channel_type: z.enum(['group', 'subgroup', 'profile', 'dm']),
   channel_id: z.string().min(1),
 });
 

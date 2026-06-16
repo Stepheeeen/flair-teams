@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,10 +13,10 @@ import {
 import { Input } from '@/components/ui/input';
 
 interface CreateProjectDialogProps {
-  teamId: string;
+  teamId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onProjectCreated: (project: any) => void;
+  onProjectCreated?: (project: any) => void;
 }
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
@@ -33,9 +33,31 @@ export function CreateProjectDialog({
   const [color, setColor] = useState(COLORS[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [teams, setTeams] = useState<any[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState(teamId || '');
+
+  useEffect(() => {
+    if (!teamId && open) {
+      fetch('/api/teams', { headers: authHeaders() })
+        .then((res) => res.json())
+        .then((data) => {
+          setTeams(data.teams || []);
+          if (data.teams && data.teams.length > 0) {
+            setSelectedTeamId(data.teams[0]._id);
+          }
+        })
+        .catch((err) => console.error('Failed to load teams:', err));
+    } else {
+      setSelectedTeamId(teamId || '');
+    }
+  }, [teamId, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedTeamId) {
+      setError('Please select a team');
+      return;
+    }
     setError('');
     setIsLoading(true);
 
@@ -43,7 +65,7 @@ export function CreateProjectDialog({
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ name, description, color, team_id: teamId }),
+        body: JSON.stringify({ name, description, color, team_id: selectedTeamId }),
       });
 
       if (!response.ok) {
@@ -55,7 +77,10 @@ export function CreateProjectDialog({
       setName('');
       setDescription('');
       setColor(COLORS[0]);
-      onProjectCreated(data.project);
+      if (onProjectCreated) {
+        onProjectCreated(data.project);
+      }
+      onOpenChange(false);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -76,6 +101,27 @@ export function CreateProjectDialog({
           {error && (
             <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
               {error}
+            </div>
+          )}
+
+          {!teamId && (
+            <div className="space-y-2">
+              <label htmlFor="project-team" className="text-sm font-medium">
+                Team
+              </label>
+              <select
+                id="project-team"
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+                disabled={isLoading}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              >
+                <option value="" disabled>Select a team</option>
+                {teams.map((t) => (
+                  <option key={t._id} value={t._id}>{t.name}</option>
+                ))}
+              </select>
             </div>
           )}
 

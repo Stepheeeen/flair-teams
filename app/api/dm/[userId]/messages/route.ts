@@ -76,7 +76,12 @@ export async function POST(
 
     const body = await req.json();
     const content = body.content?.trim();
+    const { type, attachment, reply_to } = body;
+
     if (!content) throw new ApiError(400, 'Message content is required');
+    if (type === 'file' && !attachment) {
+      throw new ApiError(400, 'Attachment object is required when type is "file"');
+    }
 
     const senderDoc = await User.findOne({ id: user.id }).select('name avatar_url').lean() as any;
     const convId = makeConversationId(user.id, otherId);
@@ -87,8 +92,9 @@ export async function POST(
       sender_name: senderDoc?.name || user.email,
       sender_avatar: senderDoc?.avatar_url,
       content,
-      type: 'text',
-      reply_to: body.reply_to || null,
+      type: type || 'text',
+      attachment: attachment || undefined,
+      reply_to: reply_to || null,
     });
 
     // Populate reply_to for the response

@@ -10,9 +10,9 @@ import { createClient } from '@supabase/supabase-js';
 import mongoose from 'mongoose';
 import * as readline from 'readline';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const mongodbUri = process.env.MONGODB_URI;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+const mongodbUri = process.env.MONGODB_URI as string;
 
 if (!supabaseUrl || !supabaseServiceKey || !mongodbUri) {
   console.error('Missing required environment variables:');

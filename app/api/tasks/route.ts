@@ -93,16 +93,19 @@ export async function POST(req: NextRequest) {
 
     // Notify assigned user
     if (assigned_to) {
-      User.findOne({ id: assigned_to }).then(assignedUser => {
-        if (assignedUser?.email) {
-          sendTaskAssignedEmail({
-            to: assignedUser.email,
-            taskTitle: title,
-            projectName: project.name,
-            assignedBy: user.name || user.email,
-            taskUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${project_id}`,
-          }).catch(err => console.error('Failed to send task assignment email:', err));
-        }
+      User.findOne({ id: user.id }).select('name').lean().then((creatorDoc) => {
+        const creatorName = (creatorDoc as any)?.name || user.email;
+        User.findOne({ id: assigned_to }).then((assignedUser) => {
+          if (assignedUser?.email) {
+            sendTaskAssignedEmail({
+              to: assignedUser.email,
+              taskTitle: title,
+              projectName: project.name,
+              assignedBy: creatorName,
+              taskUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/projects/${project_id}`,
+            }).catch((err) => console.error('Failed to send task assignment email:', err));
+          }
+        });
       });
     }
 

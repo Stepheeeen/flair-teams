@@ -247,7 +247,7 @@ function BottomAppBar({
             ) : (
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${isActive('/profile') ? 'ring-2' : ''}`}
-                style={{ backgroundColor: '#FFC078', color: '#1B1C1B', ringColor: '#FFC078' }}
+                style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}
               >
                 {user?.name?.charAt(0).toUpperCase() || '?'}
               </div>
