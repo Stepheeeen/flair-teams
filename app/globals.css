@@ -264,6 +264,11 @@
     display: none !important;
   }
 
+  /* Also remove the padding on the main content area that was reserving space for the nav bar */
+  body:has(input:focus, textarea:focus) main.pb-16 {
+    padding-bottom: 0 !important;
+  }
+
   /* Robust Scroll Anchoring */
   .scroll-container {
     overflow-anchor: auto;

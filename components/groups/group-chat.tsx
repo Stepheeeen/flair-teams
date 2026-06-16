@@ -145,74 +145,6 @@ function Avatar({ name, src, token }: { name: string; src?: string; token?: stri
   );
 }
 
-function SwipeableMessage({ children, onSwipe, isOwn }: { children: React.ReactNode, onSwipe: () => void, isOwn: boolean }) {
-  const [offset, setOffset] = useState(0);
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const isDragging = useRef(false);
-  // null = undecided, true = horizontal swipe, false = vertical scroll
-  const direction = useRef<boolean | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    isDragging.current = true;
-    direction.current = null;
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging.current) return;
-    const diffX = e.touches[0].clientX - startX.current;
-    const diffY = e.touches[0].clientY - startY.current;
-
-    // Determine direction once we have enough movement (5px threshold)
-    if (direction.current === null && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
-      direction.current = Math.abs(diffX) > Math.abs(diffY);
-    }
-
-    // Only animate if clearly a horizontal rightward swipe
-    if (direction.current === true && diffX > 0 && diffX < 60) {
-      setOffset(diffX);
-    }
-  };
-
-  const onTouchEnd = () => {
-    isDragging.current = false;
-    if (direction.current === true && offset > 40) {
-      onSwipe();
-    }
-    setOffset(0);
-    direction.current = null;
-  };
-
-  return (
-    <div
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      style={{
-        transform: `translateX(${offset}px)`,
-        transition: isDragging.current ? 'none' : 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)',
-        // pan-y: browser handles vertical scroll natively but NOT horizontal pan,
-        // so rightward swipe animates the message without scrolling the page.
-        touchAction: 'pan-y',
-      }}
-      className="relative flex items-center w-full"
-    >
-      <div 
-        className="absolute top-1/2 -translate-y-1/2 left-0 flex items-center justify-center transition-opacity z-[-1]"
-        style={{ opacity: offset / 40, transform: `translateX(-${20 + offset/2}px)` }}
-      >
-        <div className="bg-muted p-1.5 rounded-full shadow-sm">
-          <Reply className="w-3 h-3 text-foreground" />
-        </div>
-      </div>
-      <div className="w-full">
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /* ─── File Upload Helper ─────────────────────────────────────────────────── */
 async function uploadFile(
@@ -641,8 +573,7 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                 const repliedMsg = msg.reply_to ? messages.find(m => m._id === msg.reply_to) : null;
 
                 return (
-                  <SwipeableMessage key={msg._id} isOwn={isOwn} onSwipe={() => setReplyTo(msg)}>
-                    <div className={`group flex items-start gap-3 hover:bg-muted/30 px-2 py-0.5 rounded-lg ${isConsecutive ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : ''}`}>
+                  <div key={msg._id} className={`group flex items-start gap-3 hover:bg-muted/30 px-2 py-0.5 rounded-lg ${isConsecutive ? 'mt-0.5' : 'mt-3'} ${isOwn ? 'flex-row-reverse' : ''}`}>
                       <div className={`w-8 flex-shrink-0 ${isConsecutive ? 'invisible' : ''}`}>
                         <Avatar name={msg.sender_name} src={msg.sender_avatar} token={token} />
                       </div>
@@ -758,7 +689,6 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
                         )}
                       </div>
                     </div>
-                  </SwipeableMessage>
                 );
               })}
             </div>
