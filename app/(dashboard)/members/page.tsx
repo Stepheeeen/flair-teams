@@ -109,7 +109,9 @@ export default function MembersPage() {
   const filtered = members.filter((m) => {
     const q = search.toLowerCase();
     if (!q) return true;
+    const isOrphaned = !m.user;
     return (
+      (isOrphaned && ('unknown'.includes(q) || 'orphaned'.includes(q) || 'inactive'.includes(q))) ||
       m.user?.name?.toLowerCase().includes(q) ||
       m.user?.email?.toLowerCase().includes(q) ||
       m.job_title?.toLowerCase().includes(q) ||
@@ -175,8 +177,10 @@ export default function MembersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((member) => {
               const isMe = member.user_id === user?.id;
+              const isOrphaned = !member.user;
               const displayName = member.user?.name || member.user?.email || 'Unknown';
               const jobTitle = member.job_title || member.user?.job_title || '';
+              const displayEmail = member.user?.email || 'Profile missing / Inactive';
 
               return (
                 <div
@@ -187,13 +191,18 @@ export default function MembersPage() {
                   <div className="flex items-start gap-3 mb-3">
                     <Avatar name={displayName} size={10} src={member.user?.avatar_url} token={token} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-bold truncate">{displayName}</p>
                         {isMe && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">You</span>
                         )}
+                        {isOrphaned && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive">Orphaned</span>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{member.user?.email}</p>
+                      <p className={`text-xs truncate ${isOrphaned ? 'text-destructive/80 italic font-medium' : 'text-muted-foreground'}`}>
+                        {displayEmail}
+                      </p>
                     </div>
                   </div>
 
@@ -231,16 +240,29 @@ export default function MembersPage() {
                   {/* Actions */}
                   {!isMe && (
                     <div className="flex items-center gap-2 mt-auto pt-2">
-                      <Link href={`/dm/${member.user_id}`} className="flex-1">
+                      {isOrphaned ? (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="w-full text-xs gap-1.5"
+                          disabled
+                          className="flex-1 text-xs gap-1.5 opacity-50 cursor-not-allowed"
+                          title="Cannot message orphaned accounts"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
                           Message
                         </Button>
-                      </Link>
+                      ) : (
+                        <Link href={`/dm/${member.user_id}`} className="flex-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full text-xs gap-1.5"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Message
+                          </Button>
+                        </Link>
+                      )}
                       {canInvite && (
                         <Button
                           size="sm"
