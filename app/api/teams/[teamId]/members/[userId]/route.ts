@@ -68,12 +68,9 @@ export async function DELETE(
       throw new ApiError(400, 'Cannot remove yourself from team');
     }
 
-    // Retrieve the target user document to get email and verify existence
+    // Retrieve the target user document to get email (if exists)
     const targetUser = await User.findOne({ id: userId });
-    if (!targetUser) {
-      throw new ApiError(404, 'User not found');
-    }
-    const userEmail = targetUser.email;
+    const userEmail = targetUser?.email;
 
     // Check if the user is the owner of any team
     const ownedTeam = await Team.findOne({ owner_id: userId });
