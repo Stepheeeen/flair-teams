@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
+import { GlobalAssistantWidget } from '@/components/ai/global-assistant-widget';
 import Image from 'next/image';
 
 function Preloader() {
@@ -63,6 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <GlobalAssistantWidget />
     </div>
   );
 }

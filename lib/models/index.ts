@@ -203,6 +203,23 @@ export const notificationSchema = new Schema(
   { timestamps: true }
 );
 
+// ─── Meeting ──────────────────────────────────────────────────────────────────
+export const meetingSchema = new Schema(
+  {
+    title: { type: String, required: true },
+    description: String,
+    date: { type: String, required: true }, // YYYY-MM-DD
+    start_time: { type: String, required: true }, // e.g. "10:00 AM"
+    end_time: String, // e.g. "11:00 AM"
+    location_link: String,
+    organizer_id: { type: String, required: true },
+    organizer_name: String,
+    attendees: [{ type: String }], // user IDs or emails
+    status: { type: String, enum: ['scheduled', 'completed', 'cancelled'], default: 'scheduled' },
+  },
+  { timestamps: true }
+);
+
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 messageSchema.index({ channel_id: 1, createdAt: -1 });
 directMessageSchema.index({ conversation_id: 1, createdAt: -1 });
@@ -211,6 +228,8 @@ subGroupSchema.index({ group_id: 1 });
 notificationSchema.index({ recipient_id: 1, read: 1, createdAt: -1 });
 teamMemberSchema.index({ team_id: 1 });
 teamMemberSchema.index({ user_id: 1 });
+meetingSchema.index({ organizer_id: 1, date: 1 });
+meetingSchema.index({ attendees: 1 });
 
 // ─── Model Exports ────────────────────────────────────────────────────────────
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
@@ -225,3 +244,5 @@ export const SubGroup = mongoose.models.SubGroup || mongoose.model('SubGroup', s
 export const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
 export const DirectMessage = mongoose.models.DirectMessage || mongoose.model('DirectMessage', directMessageSchema);
 export const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+export const Meeting = mongoose.models.Meeting || mongoose.model('Meeting', meetingSchema);
+
