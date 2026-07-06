@@ -22,7 +22,7 @@ export function GlobalAssistantWidget() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 p-4 rounded-full bg-primary text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 z-50 ${
+        className={`fixed bottom-24 lg:bottom-6 right-6 p-4 rounded-full bg-primary text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 z-50 ${
           isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
         }`}
         title="Open HR Assistant"
