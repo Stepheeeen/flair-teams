@@ -22,6 +22,7 @@ interface Group {
   is_private: boolean;
   color: string;
   team_id: string;
+  unread_count?: number;
 }
 
 function GroupIcon({ type, is_private }: { type: string; is_private: boolean }) {
@@ -141,7 +142,13 @@ function DesktopSidebarContent({
                       <span className="text-sidebar-foreground/50">
                         <GroupIcon type={group.type} is_private={group.is_private} />
                       </span>
-                      <span className="truncate">{group.name}</span>
+                      <span className="truncate flex-1">{group.name}</span>
+                      {group.unread_count !== undefined && group.unread_count > 0 && (
+                        <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-auto"
+                          style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
+                          {group.unread_count > 9 ? '9+' : group.unread_count}
+                        </span>
+                      )}
                     </div>
                   </Link>
                 ))
@@ -196,6 +203,7 @@ function BottomAppBar({
 
   // Check if current path is a channel (for "Channels" tab active state)
   const channelActive = pathname.startsWith('/groups');
+  const channelUnreadCount = groups.reduce((acc, g) => acc + (g.unread_count || 0), 0);
 
   return (
     <>
@@ -236,7 +244,15 @@ function BottomAppBar({
             className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
             onClick={() => setMoreOpen(true)}
           >
-            <MessageSquare className={`w-5 h-5 ${channelActive ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+            <div className="relative">
+              <MessageSquare className={`w-5 h-5 ${channelActive ? 'text-[#FFC078]' : 'text-muted-foreground'}`} />
+              {channelUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full text-[8px] font-bold flex items-center justify-center"
+                  style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
+                  {channelUnreadCount > 9 ? '9+' : channelUnreadCount}
+                </span>
+              )}
+            </div>
             <span className={`text-[10px] font-semibold tracking-wide ${channelActive ? 'text-[#FFC078]' : 'text-muted-foreground'}`}>Channels</span>
           </button>
 
@@ -335,6 +351,12 @@ function BottomAppBar({
                           <p className="text-xs text-muted-foreground truncate">{group.description}</p>
                         )}
                       </div>
+                      {group.unread_count !== undefined && group.unread_count > 0 && (
+                        <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2"
+                          style={{ backgroundColor: '#FFC078', color: '#1B1C1B' }}>
+                          {group.unread_count > 9 ? '9+' : group.unread_count}
+                        </span>
+                      )}
                     </div>
                   </Link>
                 ))
@@ -390,7 +412,7 @@ export function Sidebar() {
         }
       }).catch(() => {});
     }
-  }, [user, fetchGroups, fetcher]);
+  }, [user, fetchGroups, fetcher, pathname]);
 
   const sharedProps = {
     user, pathname, groups, groupsOpen, setGroupsOpen,

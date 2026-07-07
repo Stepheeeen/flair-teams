@@ -236,6 +236,9 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
       if (!res.ok) return;
       const data = await res.json();
       setMessages(data.messages);
+      if (channelType === 'group') {
+        fetch(`/api/groups/${channelId}/read`, { method: 'POST', headers: authHeaders() }).catch(() => {});
+      }
     } catch { /* silent */ } finally {
       setIsLoading(false);
     }
@@ -250,6 +253,10 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
     setTypingUsers([]);
     loadMessages();
 
+    if (channelType === 'group') {
+      fetch(`/api/groups/${channelId}/read`, { method: 'POST', headers: authHeaders() }).catch(() => {});
+    }
+
     const supabase = getSupabaseClient();
     const channel = supabase.channel(realtimeChannelName, {
       config: { broadcast: { self: false }, presence: { key: user?.id } },
@@ -261,6 +268,9 @@ export function GroupChat({ channelType, channelId, channelInfo, parentGroupName
         // Skip messages we sent — already in state from optimistic update + API response.
         if (payload.sender_id === user?.id) return prev;
         if (prev.some((m) => m._id === payload._id)) return prev;
+        if (channelType === 'group') {
+          fetch(`/api/groups/${channelId}/read`, { method: 'POST', headers: authHeaders() }).catch(() => {});
+        }
         return [...prev, payload as Message];
       });
     });

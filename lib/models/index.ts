@@ -220,6 +220,16 @@ export const meetingSchema = new Schema(
   { timestamps: true }
 );
 
+// ─── Group Read State ──────────────────────────────────────────────────────────
+export const groupReadStateSchema = new Schema(
+  {
+    user_id: { type: String, required: true },
+    group_id: { type: Types.ObjectId, ref: 'Group', required: true },
+    last_read_at: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 messageSchema.index({ channel_id: 1, createdAt: -1 });
 directMessageSchema.index({ conversation_id: 1, createdAt: -1 });
@@ -230,6 +240,7 @@ teamMemberSchema.index({ team_id: 1 });
 teamMemberSchema.index({ user_id: 1 });
 meetingSchema.index({ organizer_id: 1, date: 1 });
 meetingSchema.index({ attendees: 1 });
+groupReadStateSchema.index({ user_id: 1, group_id: 1 }, { unique: true });
 
 // ─── Model Exports ────────────────────────────────────────────────────────────
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
@@ -245,4 +256,5 @@ export const Message = mongoose.models.Message || mongoose.model('Message', mess
 export const DirectMessage = mongoose.models.DirectMessage || mongoose.model('DirectMessage', directMessageSchema);
 export const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
 export const Meeting = mongoose.models.Meeting || mongoose.model('Meeting', meetingSchema);
+export const GroupReadState = mongoose.models.GroupReadState || mongoose.model('GroupReadState', groupReadStateSchema);
 

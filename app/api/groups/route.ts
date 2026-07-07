@@ -1,6 +1,6 @@
 import { requireAuth, handleApiError, ApiError } from '@/lib/api-utils';
 import { connectToDatabase } from '@/lib/db';
-import { Group, TeamMember } from '@/lib/models';
+import { Group, TeamMember, GroupReadState, Message } from '@/lib/models';
 import { isManagerOrAbove } from '@/lib/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -36,7 +36,28 @@ export async function GET(req: NextRequest) {
       groups = await Group.find({ team_id: { $in: teamIds } }).sort({ type: 1, name: 1 });
     }
 
-    return NextResponse.json({ groups });
+    const enrichedGroups = await Promise.all(
+      groups.map(async (group) => {
+        let unreadCount = 0;
+        if (!group.is_private || group.members.includes(user.id)) {
+          const readState = await GroupReadState.findOne({ user_id: user.id, group_id: group._id });
+          const lastReadAt = readState ? readState.last_read_at : group.createdAt;
+
+          unreadCount = await Message.countDocuments({
+            channel_type: 'group',
+            channel_id: group._id,
+            sender_id: { $ne: user.id },
+            createdAt: { $gt: lastReadAt },
+          });
+        }
+        return {
+          ...group.toObject(),
+          unread_count: unreadCount,
+        };
+      })
+    );
+
+    return NextResponse.json({ groups: enrichedGroups });
   } catch (error) {
     return handleApiError(error);
   }
