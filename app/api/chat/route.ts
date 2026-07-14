@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, getUserFromDb, handleApiError, ApiError } from '@/lib/api-utils';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -138,6 +138,51 @@ function safePruneMessages(messages: any[], maxCount = 8): any[] {
 
   return pruned;
 }
+function safeConvertToModelMessages(messages: any[]): any[] {
+  if (!Array.isArray(messages)) return [];
+  
+  return messages.map((msg) => {
+    if (msg.parts && Array.isArray(msg.parts)) {
+      return msg;
+    }
+    
+    const parts: any[] = [];
+    if (msg.role === 'user' || msg.role === 'system') {
+      if (typeof msg.content === 'string') {
+        parts.push({ type: 'text', text: msg.content });
+      } else if (Array.isArray(msg.content)) {
+        parts.push(...msg.content);
+      }
+    } else if (msg.role === 'assistant') {
+      if (typeof msg.content === 'string' && msg.content) {
+        parts.push({ type: 'text', text: msg.content });
+      }
+      if (msg.toolCalls && Array.isArray(msg.toolCalls)) {
+        for (const tc of msg.toolCalls) {
+          parts.push({
+            type: 'tool-call',
+            toolCallId: tc.toolCallId || tc.id,
+            toolName: tc.toolName || tc.name,
+            input: tc.args || tc.input,
+          });
+        }
+      }
+    } else if (msg.role === 'tool') {
+      parts.push({
+        type: 'tool-result',
+        toolCallId: msg.toolCallId,
+        toolName: msg.toolName,
+        result: msg.content,
+      });
+    }
+    
+    return {
+      id: msg.id || Math.random().toString(),
+      role: msg.role,
+      parts,
+    };
+  });
+}
 
 // ─── Route ─────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
@@ -156,7 +201,8 @@ export async function POST(req: NextRequest) {
     const primaryGeminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
     const secondaryGeminiKey = process.env.SECONDARY_GEMINI_API_KEY || process.env.GEMINI_API_KEY_2;
 
-    const modelMessages = await convertToModelMessages(messages);
+    const uiMessages = safeConvertToModelMessages(messages);
+    const modelMessages = await convertToModelMessages(uiMessages);
     const prunedMessages = safePruneMessages(modelMessages, 8);
 
     const systemPrompt = `You are an expert HR & Team Workspace Assistant for Flair Technologies.
@@ -242,6 +288,7 @@ CRITICAL INSTRUCTIONS:
     );
 
   } catch (error: any) {
+    console.error('[API Chat Error]:', error);
     if (
       error?.status === 429 ||
       error?.statusCode === 429 ||
