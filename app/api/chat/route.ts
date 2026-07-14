@@ -48,7 +48,7 @@ async function probeGeminiKey(apiKey: string): Promise<boolean> {
       }
     );
 
-    const isValid = res.status !== 429 && res.status !== 401 && res.status !== 403;
+    const isValid = res.status === 200;
     if (isValid) markKeyValid(apiKey); else markKeyInvalid(apiKey);
     return isValid;
   } catch {
@@ -87,6 +87,58 @@ function reportGeminiIssue(keyLabel: string, error: unknown) {
   );
 }
 
+function safePruneMessages(messages: any[], maxCount = 8): any[] {
+  if (messages.length <= maxCount) {
+    return messages;
+  }
+
+  const pruned: any[] = [];
+  const pendingToolCallIds = new Set<string>();
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    const isUnderLimit = pruned.length < maxCount;
+    let isRequired = false;
+
+    if (msg.role === 'tool') {
+      if (isUnderLimit) {
+        isRequired = true;
+        if (Array.isArray(msg.content)) {
+          for (const part of msg.content) {
+            if (part.type === 'tool-result') {
+              pendingToolCallIds.add(part.toolCallId);
+            }
+          }
+        }
+      }
+    } else if (msg.role === 'assistant') {
+      if (msg.content && Array.isArray(msg.content)) {
+        const hasPendingCall = msg.content.some(
+          (part: any) => part.type === 'tool-call' && pendingToolCallIds.has(part.toolCallId)
+        );
+        if (hasPendingCall) {
+          isRequired = true;
+          for (const part of msg.content) {
+            if (part.type === 'tool-call') {
+              pendingToolCallIds.delete(part.toolCallId);
+            }
+          }
+        }
+      }
+    }
+
+    if (isUnderLimit || isRequired) {
+      pruned.unshift(msg);
+    }
+  }
+
+  while (pruned.length > 0 && pruned[0].role === 'tool') {
+    pruned.shift();
+  }
+
+  return pruned;
+}
+
 // ─── Route ─────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
@@ -105,7 +157,7 @@ export async function POST(req: NextRequest) {
     const secondaryGeminiKey = process.env.SECONDARY_GEMINI_API_KEY || process.env.GEMINI_API_KEY_2;
 
     const modelMessages = await convertToModelMessages(messages);
-    const prunedMessages = modelMessages.length > 8 ? modelMessages.slice(-8) : modelMessages;
+    const prunedMessages = safePruneMessages(modelMessages, 8);
 
     const systemPrompt = `You are an expert HR & Team Workspace Assistant for Flair Technologies.
 Current User Context: Name: ${user.name || user.email}, Role: ${user.role}, ID: ${user.id}, Email: ${user.email}.
