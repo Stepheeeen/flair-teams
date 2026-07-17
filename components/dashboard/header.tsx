@@ -16,8 +16,10 @@ import {
 import {
   Sun, Moon, LogOut, User, ChevronDown, Bell, Search,
   Hash, Folder, Building2, MessageSquare, Check, CheckCheck,
-  Plus, PlusCircle, LayoutDashboard,
+  Plus, PlusCircle, LayoutDashboard, Bot,
 } from 'lucide-react';
+import { isManagerOrAbove } from '@/lib/client-roles';
+import { useAssistant } from '@/components/ai/assistant-context';
 import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -49,6 +51,7 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { isOpen, setIsOpen } = useAssistant();
 
   const [cmdOpen, setCmdOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -184,6 +187,23 @@ export function Header() {
             <Sun className="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute w-4 h-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
+
+          {/* HR Assistant Toggle (Desktop navbar only) */}
+          {isManagerOrAbove(user) && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`w-8 h-8 rounded-full hidden lg:flex items-center justify-center transition-all ${
+                isOpen
+                  ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+              }`}
+              onClick={() => setIsOpen(!isOpen)}
+              title="HR Assistant"
+            >
+              <Bot className="w-4 h-4" />
+            </Button>
+          )}
 
           {/* Notification bell */}
           <Popover open={notifOpen} onOpenChange={(v) => { setNotifOpen(v); if (v) fetchNotifications(); }}>

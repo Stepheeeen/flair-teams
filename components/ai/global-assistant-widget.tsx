@@ -1,17 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bot, X, Maximize2, Minimize2 } from 'lucide-react';
 import { ChatPanel } from './chat-panel';
 import { useAuth } from '@/lib/auth-context';
+import { useAssistant } from './assistant-context';
+import { isManagerOrAbove } from '@/lib/client-roles';
+import { usePathname } from 'next/navigation';
 
 export function GlobalAssistantWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen } = useAssistant();
   const [isExpanded, setIsExpanded] = useState(false);
   const { user } = useAuth();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname, setIsOpen]);
 
   // Only show for admins and managers
-  if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+  if (!isManagerOrAbove(user)) {
     return null;
   }
 
@@ -22,7 +30,7 @@ export function GlobalAssistantWidget() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-24 lg:bottom-6 right-6 p-4 rounded-full bg-primary text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 z-50 ${
+        className={`fixed bottom-24 lg:hidden right-6 p-4 rounded-full bg-primary text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 z-50 ${
           isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
         }`}
         title="Open HR Assistant"
@@ -67,7 +75,7 @@ export function GlobalAssistantWidget() {
       {/* Backdrop for mobile & expanded view */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40"
+          className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}

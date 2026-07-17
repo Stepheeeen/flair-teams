@@ -8,11 +8,12 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard, Hash, Users, Megaphone, Lock,
   Plus, MessageSquare, ChevronDown, ChevronRight, MessageCircle,
-  MoreHorizontal, X, User,
+  MoreHorizontal, X, User, Bot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateGroupDialog } from '@/components/groups/create-group-dialog';
 import { isManagerOrAbove } from '@/lib/client-roles';
+import { useAssistant } from '@/components/ai/assistant-context';
 
 interface Group {
   _id: string;
@@ -45,6 +46,7 @@ function DesktopSidebarContent({
   dmUnreadCount: number;
 }) {
   const { token } = useAuth();
+  const { isOpen: assistantOpen, setIsOpen: setAssistantOpen } = useAssistant();
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
 
@@ -92,6 +94,20 @@ function DesktopSidebarContent({
         {navItem('/dashboard', 'Dashboard', <LayoutDashboard className="w-3.5 h-3.5 flex-shrink-0" />, true)}
         {navItem('/members', 'Members', <Users className="w-3.5 h-3.5 flex-shrink-0" />)}
         {navItem('/dm', 'Direct Messages', <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />, false, dmUnreadCount)}
+
+        {isManagerOrAbove(user) && (
+          <button
+            onClick={() => setAssistantOpen(!assistantOpen)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+              assistantOpen
+                ? 'bg-sidebar-primary/15 text-sidebar-primary'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="flex-1 text-left truncate">HR Assistant</span>
+          </button>
+        )}
 
         {/* Channels section */}
         <div className="pt-3">

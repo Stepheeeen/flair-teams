@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { AuthProvider } from '@/lib/auth-context';
+import { AssistantProvider } from '@/components/ai/assistant-context';
 import { PushManager } from '@/components/push-manager';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from 'sonner';
@@ -83,9 +84,11 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <PushManager />
-            <VisualViewportManager />
-            {children}
+            <AssistantProvider>
+              <PushManager />
+              <VisualViewportManager />
+              {children}
+            </AssistantProvider>
           </AuthProvider>
           <Toaster richColors position="bottom-right" />
         </ThemeProvider>
