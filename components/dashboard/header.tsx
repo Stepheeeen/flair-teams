@@ -302,6 +302,15 @@ export function Header() {
                   <span>Dashboard</span>
                 </Link>
               </DropdownMenuItem>
+              {isManagerOrAbove(user) && (
+                <DropdownMenuItem
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="gap-2 py-2 cursor-pointer rounded-md focus:bg-primary/5 lg:hidden"
+                >
+                  <Bot className="w-4 h-4 text-muted-foreground" />
+                  <span>HR Assistant</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem onClick={handleSignOut} className="gap-2 py-2 text-destructive focus:text-destructive focus:bg-destructive/5 cursor-pointer rounded-md">
                 <LogOut className="w-4 h-4" />

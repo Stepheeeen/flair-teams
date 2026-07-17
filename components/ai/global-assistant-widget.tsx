@@ -27,16 +27,6 @@ export function GlobalAssistantWidget() {
 
   return (
     <>
-      {/* Floating Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className={`fixed bottom-24 lg:hidden right-6 p-4 rounded-full bg-primary text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 z-50 ${
-          isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
-        }`}
-        title="Open HR Assistant"
-      >
-        <Bot className="w-6 h-6" />
-      </button>
 
       {/* Slide-over Panel */}
       <div

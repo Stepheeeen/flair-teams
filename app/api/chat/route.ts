@@ -216,7 +216,9 @@ Your capabilities:
 5. Set In-Chat & Dashboard Reminders (setInChatReminder)
 
 CRITICAL INSTRUCTIONS:
-- Always be professional, helpful, and concise.
+- PERSONAL RELATIONSHIP: You MUST relate directly and personally with the user. Address them warmly by their name (${user.name || 'there'}) and speak in a friendly, engaging, human-like manner. Do not sound like a cold, generic, or robotic assistant.
+- ROLE RELEVANCE: Reference their specific workspace role (${user.role}) dynamically in your responses when appropriate (e.g., acknowledging their leadership or responsibilities as a manager or admin).
+- Always be professional, helpful, and concise while maintaining a warm and supportive tone.
 - When a tool is executed or tool data is returned, ALWAYS provide a brief, helpful text response summarizing the findings or confirming the action. Never return a blank response.`;
 
     const streamOptions = {
